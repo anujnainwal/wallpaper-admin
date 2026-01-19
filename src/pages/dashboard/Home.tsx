@@ -1,39 +1,360 @@
 import React from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
+import {
+  FaUsers,
+  FaAndroid,
+  FaApple,
+  FaGlobeAmericas,
+  FaArrowUp,
+  FaArrowDown,
+  FaMobileAlt,
+} from "react-icons/fa";
 
 const Home: React.FC = () => {
+  // Mock Data for Charts
+  const platformData = [
+    { name: "Android", value: 15400 },
+    { name: "iOS", value: 9132 },
+  ];
+  const PLATFORM_COLORS = ["#10B981", "#6366f1"]; // Android Green, iOS Indigo
+
+  const userActivityData = [
+    { name: "Mon", active: 12000 },
+    { name: "Tue", active: 13500 },
+    { name: "Wed", active: 11000 },
+    { name: "Thu", active: 14200 },
+    { name: "Fri", active: 15800 },
+    { name: "Sat", active: 18900 },
+    { name: "Sun", active: 19500 },
+  ];
+
+  const countryData = [
+    { country: "India", users: 45, flag: "🇮🇳", color: "bg-orange-500" },
+    { country: "USA", users: 25, flag: "🇺🇸", color: "bg-blue-600" },
+    { country: "UK", users: 10, flag: "🇬🇧", color: "bg-red-600" },
+    { country: "Brazil", users: 8, flag: "🇧🇷", color: "bg-green-500" },
+    { country: "Others", users: 12, flag: "🌍", color: "bg-gray-400" },
+  ];
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Stat Cards */}
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h3 className="text-gray-500 text-sm font-medium">Total Users</h3>
-          <p className="text-3xl font-bold text-gray-800 mt-2">1,234</p>
-          <span className="text-green-500 text-sm mt-2 block">
-            ↑ 12% from last month
-          </span>
+    <div className="space-y-8">
+      {/* Header Section */}
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">App Analytics</h1>
+          <p className="text-gray-500 mt-1">
+            Mobile engagement and user growth metrics.
+          </p>
         </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h3 className="text-gray-500 text-sm font-medium">Total Revenue</h3>
-          <p className="text-3xl font-bold text-gray-800 mt-2">$45,678</p>
-          <span className="text-green-500 text-sm mt-2 block">
-            ↑ 8% from last month
-          </span>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm">
-          <h3 className="text-gray-500 text-sm font-medium">Active Sessions</h3>
-          <p className="text-3xl font-bold text-gray-800 mt-2">892</p>
-          <span className="text-red-500 text-sm mt-2 block">
-            ↓ 3% from last month
-          </span>
+        <div className="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="p-6 border-b">
-          <h3 className="text-lg font-bold text-gray-800">Recent Activity</h3>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Users */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start">
+            <div className="p-3 bg-blue-50 rounded-xl">
+              <FaUsers className="w-6 h-6 text-blue-600" />
+            </div>
+            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+              <FaArrowUp className="w-3 h-3 mr-1" /> 12%
+            </span>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-gray-500 text-sm font-medium">Total Users</h3>
+            <p className="text-2xl font-bold text-gray-900 mt-1">24,532</p>
+          </div>
         </div>
-        <div className="p-6">
-          <p className="text-gray-500">No recent activity to show.</p>
+
+        {/* Active Users */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start">
+            <div className="p-3 bg-indigo-50 rounded-xl">
+              <FaMobileAlt className="w-6 h-6 text-indigo-600" />
+            </div>
+            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+              <FaArrowUp className="w-3 h-3 mr-1" /> 8%
+            </span>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-gray-500 text-sm font-medium">Active Users</h3>
+            <p className="text-2xl font-bold text-gray-900 mt-1">12,404</p>
+            <p className="text-xs text-gray-400 mt-1">Last 30 days</p>
+          </div>
+        </div>
+
+        {/* Android Users */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start">
+            <div className="p-3 bg-green-50 rounded-xl">
+              <FaAndroid className="w-6 h-6 text-green-600" />
+            </div>
+            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+              <FaArrowUp className="w-3 h-3 mr-1" /> 5%
+            </span>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-gray-500 text-sm font-medium">Android Users</h3>
+            <p className="text-2xl font-bold text-gray-900 mt-1">15,400</p>
+          </div>
+        </div>
+
+        {/* iOS Users */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div className="flex justify-between items-start">
+            <div className="p-3 bg-gray-50 rounded-xl">
+              <FaApple className="w-6 h-6 text-gray-800" />
+            </div>
+            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+              <FaArrowUp className="w-3 h-3 mr-1" /> 18%
+            </span>
+          </div>
+          <div className="mt-4">
+            <h3 className="text-gray-500 text-sm font-medium">iOS Users</h3>
+            <p className="text-2xl font-bold text-gray-900 mt-1">9,132</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Active Users Trend */}
+        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-gray-900">
+              User Activity Trend
+            </h3>
+            <select className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg p-2 outline-none">
+              <option>This Week</option>
+              <option>Last Month</option>
+            </select>
+          </div>
+          <div className="h-80 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={userActivityData}>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  vertical={false}
+                  stroke="#E5E7EB"
+                />
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#6B7280", fontSize: 12 }}
+                  dy={10}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: "#6B7280", fontSize: 12 }}
+                />
+                <Tooltip
+                  cursor={{ fill: "#F3F4F6" }}
+                  contentStyle={{
+                    backgroundColor: "#fff",
+                    borderRadius: "8px",
+                    border: "1px solid #E5E7EB",
+                    boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+                  }}
+                />
+                <Bar dataKey="active" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Platform Distribution */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
+          <h3 className="text-lg font-bold text-gray-900 mb-2">
+            Device Distribution
+          </h3>
+          <div className="flex-1 h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={platformData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {platformData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={PLATFORM_COLORS[index % PLATFORM_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="mt-4 space-y-3">
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FaAndroid className="text-green-500" />
+                <span className="text-sm font-medium text-gray-700">
+                  Android
+                </span>
+              </div>
+              <span className="font-bold text-gray-900">63%</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FaApple className="text-gray-800" />
+                <span className="text-sm font-medium text-gray-700">iOS</span>
+              </div>
+              <span className="font-bold text-gray-900">37%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Country Distribution & Uploads */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Country List */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-bold text-gray-900">
+              Users by Country
+            </h3>
+            <FaGlobeAmericas className="text-gray-400" />
+          </div>
+          <div className="space-y-5">
+            {countryData.map((item) => (
+              <div key={item.country}>
+                <div className="flex justify-between text-sm mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{item.flag}</span>
+                    <span className="font-medium text-gray-700">
+                      {item.country}
+                    </span>
+                  </div>
+                  <span className="font-bold text-gray-900">{item.users}%</span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className={`${item.color} h-2 rounded-full`}
+                    style={{ width: `${item.users}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Recent Uploads (Keeping existing table structure but compacted) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h3 className="text-lg font-bold text-gray-900">
+              Recent Wallpapers
+            </h3>
+            <button className="text-sm text-indigo-600 font-medium hover:text-indigo-700">
+              View All
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Wallpaper
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Stats
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {[
+                  {
+                    title: "Neon Nights",
+                    category: "Abstract",
+                    downloads: 1240,
+                    status: "Active",
+                  },
+                  {
+                    title: "Mountain Peak",
+                    category: "Nature",
+                    downloads: 890,
+                    status: "Pending",
+                  },
+                  {
+                    title: "Ocean Waves",
+                    category: "Nature",
+                    downloads: 2300,
+                    status: "Active",
+                  },
+                ].map((item, index) => (
+                  <tr
+                    key={index}
+                    className="hover:bg-gray-50 transition-colors"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-lg bg-gray-200 flex-shrink-0 mr-3"></div>
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {item.title}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {item.category}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-600 font-medium">
+                        {item.downloads.toLocaleString()}{" "}
+                        <span className="text-xs text-gray-400 font-normal">
+                          downloads
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          item.status === "Active"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import AuthBranding from "../../components/auth/AuthBranding";
 

@@ -7,6 +7,14 @@ import Home from "../pages/dashboard/Home";
 import Login from "../pages/auth/Login";
 import ForgotPassword from "../pages/auth/ForgotPassword";
 import ResetPassword from "../pages/auth/ResetPassword";
+import NotificationList from "../pages/notifications/NotificationList";
+import AddNotification from "../pages/notifications/AddNotification";
+import LegalDocuments from "../pages/legal/LegalDocuments";
+import About from "../pages/support/About";
+import CategoryList from "../pages/content/CategoryList";
+import AddCategory from "../pages/content/AddCategory";
+import FAQ from "../pages/support/FAQ";
+import HelpSupport from "../pages/support/HelpSupport";
 
 const AppRoutes: React.FC = () => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -52,6 +60,18 @@ const AppRoutes: React.FC = () => {
         }
       >
         <Route index element={<Home />} />
+        <Route path="notifications/list" element={<NotificationList />} />
+        <Route path="notifications/add" element={<AddNotification />} />
+
+        {/* Content */}
+        <Route path="content/categories" element={<CategoryList />} />
+        <Route path="content/categories/add" element={<AddCategory />} />
+
+        {/* Legal & Support */}
+        <Route path="legal" element={<LegalDocuments />} />
+        <Route path="about" element={<About />} />
+        <Route path="faq" element={<FAQ />} />
+        <Route path="help" element={<HelpSupport />} />
         {/* Add more dashboard routes here */}
       </Route>
 
