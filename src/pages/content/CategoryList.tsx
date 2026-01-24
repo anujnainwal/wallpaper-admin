@@ -167,7 +167,7 @@ const CategoryList: React.FC = () => {
               )}
               {!row.getCanExpand() && <span className="w-5 mr-2"></span>}
 
-              <div className="h-10 w-10 rounded-lg bg-gray-100 flex-shrink-0 mr-3 flex items-center justify-center border border-gray-200 overflow-hidden">
+              <div className="h-10 w-10 rounded-lg bg-gray-100 mr-3 flex items-center justify-center border border-gray-200 overflow-hidden">
                 {row.original.icon ? (
                   <img
                     src={row.original.icon}

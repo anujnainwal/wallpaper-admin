@@ -18,7 +18,6 @@ import {
   FaApple,
   FaGlobeAmericas,
   FaArrowUp,
-  FaArrowDown,
   FaMobileAlt,
 } from "react-icons/fa";
 
@@ -53,12 +52,14 @@ const Home: React.FC = () => {
       {/* Header Section */}
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">App Analytics</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            App Analytics
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
             Mobile engagement and user growth metrics.
           </p>
         </div>
-        <div className="text-sm text-gray-500 bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-100">
+        <div className="text-sm text-gray-500 dark:text-gray-300 bg-white dark:bg-gray-800 px-4 py-2 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700">
           {new Date().toLocaleDateString("en-US", {
             weekday: "long",
             year: "numeric",
@@ -71,67 +72,85 @@ const Home: React.FC = () => {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Total Users */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-blue-50 rounded-xl">
-              <FaUsers className="w-6 h-6 text-blue-600" />
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
+              <FaUsers className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
-            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+            <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
               <FaArrowUp className="w-3 h-3 mr-1" /> 12%
             </span>
           </div>
           <div className="mt-4">
-            <h3 className="text-gray-500 text-sm font-medium">Total Users</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">24,532</p>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+              Total Users
+            </h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              24,532
+            </p>
           </div>
         </div>
 
         {/* Active Users */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-indigo-50 rounded-xl">
-              <FaMobileAlt className="w-6 h-6 text-indigo-600" />
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
+              <FaMobileAlt className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+            <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
               <FaArrowUp className="w-3 h-3 mr-1" /> 8%
             </span>
           </div>
           <div className="mt-4">
-            <h3 className="text-gray-500 text-sm font-medium">Active Users</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">12,404</p>
-            <p className="text-xs text-gray-400 mt-1">Last 30 days</p>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+              Active Users
+            </h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              12,404
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              Last 30 days
+            </p>
           </div>
         </div>
 
         {/* Android Users */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-green-50 rounded-xl">
-              <FaAndroid className="w-6 h-6 text-green-600" />
+            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-xl">
+              <FaAndroid className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
-            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+            <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
               <FaArrowUp className="w-3 h-3 mr-1" /> 5%
             </span>
           </div>
           <div className="mt-4">
-            <h3 className="text-gray-500 text-sm font-medium">Android Users</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">15,400</p>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+              Android Users
+            </h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              15,400
+            </p>
           </div>
         </div>
 
         {/* iOS Users */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-all">
           <div className="flex justify-between items-start">
-            <div className="p-3 bg-gray-50 rounded-xl">
-              <FaApple className="w-6 h-6 text-gray-800" />
+            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-xl">
+              <FaApple className="w-6 h-6 text-gray-800 dark:text-gray-200" />
             </div>
-            <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-1 rounded-full">
+            <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
               <FaArrowUp className="w-3 h-3 mr-1" /> 18%
             </span>
           </div>
           <div className="mt-4">
-            <h3 className="text-gray-500 text-sm font-medium">iOS Users</h3>
-            <p className="text-2xl font-bold text-gray-900 mt-1">9,132</p>
+            <h3 className="text-gray-500 dark:text-gray-400 text-sm font-medium">
+              iOS Users
+            </h3>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
+              9,132
+            </p>
           </div>
         </div>
       </div>
@@ -139,12 +158,12 @@ const Home: React.FC = () => {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Active Users Trend */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-gray-900">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               User Activity Trend
             </h3>
-            <select className="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg p-2 outline-none">
+            <select className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-sm rounded-lg p-2 outline-none">
               <option>This Week</option>
               <option>Last Month</option>
             </select>
@@ -185,8 +204,8 @@ const Home: React.FC = () => {
         </div>
 
         {/* Platform Distribution */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex flex-col">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
             Device Distribution
           </h3>
           <div className="flex-1 h-64 w-full">
@@ -202,7 +221,7 @@ const Home: React.FC = () => {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {platformData.map((entry, index) => (
+                  {platformData.map((_entry, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={PLATFORM_COLORS[index % PLATFORM_COLORS.length]}
@@ -215,21 +234,27 @@ const Home: React.FC = () => {
             </ResponsiveContainer>
           </div>
           <div className="mt-4 space-y-3">
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="flex items-center gap-2">
                 <FaAndroid className="text-green-500" />
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   Android
                 </span>
               </div>
-              <span className="font-bold text-gray-900">63%</span>
+              <span className="font-bold text-gray-900 dark:text-white">
+                63%
+              </span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+            <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
               <div className="flex items-center gap-2">
-                <FaApple className="text-gray-800" />
-                <span className="text-sm font-medium text-gray-700">iOS</span>
+                <FaApple className="text-gray-800 dark:text-gray-200" />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  iOS
+                </span>
               </div>
-              <span className="font-bold text-gray-900">37%</span>
+              <span className="font-bold text-gray-900 dark:text-white">
+                37%
+              </span>
             </div>
           </div>
         </div>
@@ -238,9 +263,9 @@ const Home: React.FC = () => {
       {/* Country Distribution & Uploads */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Country List */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-gray-900">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               Users by Country
             </h3>
             <FaGlobeAmericas className="text-gray-400" />
@@ -251,11 +276,13 @@ const Home: React.FC = () => {
                 <div className="flex justify-between text-sm mb-2">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{item.flag}</span>
-                    <span className="font-medium text-gray-700">
+                    <span className="font-medium text-gray-700 dark:text-gray-300">
                       {item.country}
                     </span>
                   </div>
-                  <span className="font-bold text-gray-900">{item.users}%</span>
+                  <span className="font-bold text-gray-900 dark:text-white">
+                    {item.users}%
+                  </span>
                 </div>
                 <div className="w-full bg-gray-100 rounded-full h-2">
                   <div
@@ -269,31 +296,31 @@ const Home: React.FC = () => {
         </div>
 
         {/* Recent Uploads (Keeping existing table structure but compacted) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-            <h3 className="text-lg font-bold text-gray-900">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">
               Recent Wallpapers
             </h3>
-            <button className="text-sm text-indigo-600 font-medium hover:text-indigo-700">
+            <button className="text-sm text-indigo-600 dark:text-indigo-400 font-medium hover:text-indigo-700 dark:hover:text-indigo-300">
               View All
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 dark:bg-gray-700/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Wallpaper
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Stats
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Status
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                 {[
                   {
                     title: "Neon Nights",
@@ -316,25 +343,25 @@ const Home: React.FC = () => {
                 ].map((item, index) => (
                   <tr
                     key={index}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 rounded-lg bg-gray-200 flex-shrink-0 mr-3"></div>
+                        <div className="h-10 w-10 rounded-lg bg-gray-200 dark:bg-gray-600 mr-3"></div>
                         <div>
-                          <p className="font-medium text-gray-900">
+                          <p className="font-medium text-gray-900 dark:text-white">
                             {item.title}
                           </p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {item.category}
                           </p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 font-medium">
+                      <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">
                         {item.downloads.toLocaleString()}{" "}
-                        <span className="text-xs text-gray-400 font-normal">
+                        <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">
                           downloads
                         </span>
                       </div>

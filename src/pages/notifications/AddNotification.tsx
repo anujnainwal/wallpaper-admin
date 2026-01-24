@@ -321,7 +321,7 @@ const AddNotification: React.FC = () => {
               <div className="w-full h-full flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-sm bg-white rounded-lg shadow-xl border-l-4 border-indigo-500 p-4 transform transition-all hover:scale-105">
                   <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 pt-0.5">
+                    <div className="pt-0.5">
                       <img
                         src="/wallpaper-logo.png"
                         className="h-10 w-10 rounded-full"
@@ -343,7 +343,7 @@ const AddNotification: React.FC = () => {
                         />
                       )}
                     </div>
-                    <button className="flex-shrink-0 text-gray-400 hover:text-gray-500">
+                    <button className="text-gray-400 hover:text-gray-500">
                       <span className="sr-only">Close</span>
                       <svg
                         className="h-5 w-5"

@@ -1,31 +1,15 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
-  getPaginationRowModel,
-  getFilteredRowModel,
-  flexRender,
-  createColumnHelper,
-  type SortingState,
-  type ColumnFiltersState,
-} from "@tanstack/react-table";
+import type { ColumnDef } from "@tanstack/react-table";
+import { ReusableTable } from "../../components/common/ReusableTable";
 import Modal from "../../components/common/Modal";
 import {
   FaAndroid,
   FaApple,
   FaGlobe,
-  FaSearch,
-  FaFilter,
   FaCheckCircle,
   FaClock,
   FaTrash,
-  FaSort,
-  FaSortUp,
-  FaSortDown,
-  FaChevronLeft,
-  FaChevronRight,
 } from "react-icons/fa";
 
 // Types
@@ -170,21 +154,13 @@ const generateData = (): Notification[] => {
   return [...baseData, ...moreData];
 };
 
-const columnHelper = createColumnHelper<Notification>();
-
 const NotificationList: React.FC = () => {
   const navigate = useNavigate();
   const [data, setData] = useState(() => generateData());
-  const [sorting, setSorting] = useState<SortingState>([]);
-  const [globalFilter, setGlobalFilter] = useState("");
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Notification | null>(null);
-
-  // Filter UI State
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const handleDeleteClick = (notification: Notification) => {
     setItemToDelete(notification);
@@ -199,350 +175,151 @@ const NotificationList: React.FC = () => {
     }
   };
 
-  const columns = useMemo(
+  const columns = useMemo<ColumnDef<Notification>[]>(
     () => [
-      columnHelper.accessor("title", {
+      {
+        accessorKey: "title",
         header: "Campaign Info",
-        cell: (info) => (
+        cell: ({ getValue, row }) => (
           <div className="flex flex-col">
-            <span className="font-medium text-gray-900 text-sm">
-              {info.getValue()}
+            <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+              {getValue() as string}
             </span>
-            <span className="text-gray-500 text-xs truncate max-w-xs">
-              {info.row.original.message}
+            <span className="text-gray-500 dark:text-gray-400 text-xs truncate max-w-xs">
+              {row.original.message}
             </span>
           </div>
         ),
-      }),
-      columnHelper.accessor("target", {
+      },
+      {
+        accessorKey: "target",
         header: "Target",
-        cell: (info) => (
-          <div className="flex items-center gap-2 text-gray-600">
-            {info.getValue() === "all" && (
-              <>
-                <FaGlobe className="text-indigo-500" />
-                <span className="text-sm">All</span>
-              </>
-            )}
-            {info.getValue() === "android" && (
-              <>
-                <FaAndroid className="text-green-500" />
-                <span className="text-sm">Android</span>
-              </>
-            )}
-            {info.getValue() === "ios" && (
-              <>
-                <FaApple className="text-gray-900" />
-                <span className="text-sm">iOS</span>
-              </>
-            )}
-            {info.getValue() === "custom" && (
-              <span className="text-sm bg-gray-100 px-2 py-0.5 rounded text-gray-600">
-                Custom
-              </span>
-            )}
-          </div>
-        ),
-      }),
-      columnHelper.accessor("sentAt", {
+        cell: ({ getValue }) => {
+          const target = getValue() as string;
+          return (
+            <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+              {target === "all" && (
+                <>
+                  <FaGlobe className="text-indigo-500 dark:text-indigo-400" />
+                  <span className="text-sm">All</span>
+                </>
+              )}
+              {target === "android" && (
+                <>
+                  <FaAndroid className="text-green-500 dark:text-green-400" />
+                  <span className="text-sm">Android</span>
+                </>
+              )}
+              {target === "ios" && (
+                <>
+                  <FaApple className="text-gray-900 dark:text-gray-100" />
+                  <span className="text-sm">iOS</span>
+                </>
+              )}
+              {target === "custom" && (
+                <span className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
+                  Custom
+                </span>
+              )}
+            </div>
+          );
+        },
+        filterFn: "equals",
+      },
+      {
+        accessorKey: "sentAt",
         header: "Date",
-        cell: (info) => (
-          <span className="text-sm text-gray-600">{info.getValue()}</span>
-        ),
-      }),
-      columnHelper.accessor("status", {
-        header: "Status",
-        cell: (info) => (
-          <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              info.getValue() === "Sent"
-                ? "bg-green-100 text-green-800"
-                : info.getValue() === "Scheduled"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-gray-100 text-gray-800"
-            }`}
-          >
-            {info.getValue() === "Sent" ? (
-              <FaCheckCircle className="mr-1" size={10} />
-            ) : (
-              <FaClock className="mr-1" size={10} />
-            )}
-            {info.getValue()}
+        cell: ({ getValue }) => (
+          <span className="text-sm text-gray-600 dark:text-gray-300">
+            {getValue() as string}
           </span>
         ),
-      }),
-      columnHelper.accessor("opens", {
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ getValue }) => {
+          const status = getValue() as string;
+          return (
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                status === "Sent"
+                  ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                  : status === "Scheduled"
+                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+              }`}
+            >
+              {status === "Sent" ? (
+                <FaCheckCircle className="mr-1" size={10} />
+              ) : (
+                <FaClock className="mr-1" size={10} />
+              )}
+              {status}
+            </span>
+          );
+        },
+        filterFn: "equals",
+      },
+      {
+        accessorKey: "opens",
         header: "Engagement",
-        cell: (info) =>
-          info.getValue() > 0 ? (
-            <span className="font-medium text-gray-900">
-              {info.getValue()}{" "}
-              <span className="text-gray-400 font-normal">opens</span>
+        cell: ({ getValue }) => {
+          const opens = getValue() as number;
+          return opens > 0 ? (
+            <span className="font-medium text-gray-900 dark:text-gray-100">
+              {opens}{" "}
+              <span className="text-gray-400 dark:text-gray-500 font-normal">
+                opens
+              </span>
             </span>
           ) : (
-            <span className="text-gray-400">-</span>
-          ),
-      }),
-      columnHelper.display({
+            <span className="text-gray-400 dark:text-gray-500">-</span>
+          );
+        },
+      },
+      {
         id: "actions",
         header: "Actions",
-        cell: (info) => (
+        cell: ({ row }) => (
           <div className="text-right">
             <button
-              onClick={() => handleDeleteClick(info.row.original)}
-              className="text-gray-400 hover:text-red-600 transition-colors p-2 hover:bg-gray-100 rounded-full"
+              onClick={() => handleDeleteClick(row.original)}
+              className="text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400 transition-colors p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full"
             >
               <FaTrash size={14} />
             </button>
           </div>
         ),
-      }),
+      },
     ],
     [],
   );
-
-  const table = useReactTable({
-    data,
-    columns,
-    state: {
-      sorting,
-      globalFilter,
-      columnFilters,
-    },
-    onSortingChange: setSorting,
-    onGlobalFilterChange: setGlobalFilter,
-    onColumnFiltersChange: setColumnFilters,
-    getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
-  });
 
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             Notification History
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Manage and track your sent push notifications.
           </p>
         </div>
         <button
           onClick={() => navigate("/notifications/add")}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 flex items-center gap-2"
+          className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 flex items-center gap-2"
         >
           <span>+</span> Create New
         </button>
       </div>
 
-      {/* Filters & Search */}
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row gap-4 justify-between items-center transition-all">
-        <div className="relative w-full sm:w-96 group">
-          <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" />
-          <input
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(e.target.value)}
-            type="text"
-            placeholder="Search notifications..."
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-          />
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm transition-all ${
-              isFilterOpen
-                ? "bg-indigo-50 border-indigo-200 text-indigo-600"
-                : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <FaFilter
-              className={isFilterOpen ? "text-indigo-500" : "text-gray-400"}
-            />{" "}
-            Filter
-          </button>
-        </div>
-      </div>
-
-      {/* Advanced Filter Panel */}
-      {isFilterOpen && (
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in-down">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Target Audience
-            </label>
-            <select
-              value={
-                (table.getColumn("target")?.getFilterValue() as string) ?? ""
-              }
-              onChange={(e) =>
-                table.getColumn("target")?.setFilterValue(e.target.value)
-              }
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Targets</option>
-              <option value="android">Android</option>
-              <option value="ios">iOS</option>
-              <option value="custom">Custom</option>
-              <option value="all">All Users</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={
-                (table.getColumn("status")?.getFilterValue() as string) ?? ""
-              }
-              onChange={(e) =>
-                table.getColumn("status")?.setFilterValue(e.target.value)
-              }
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              <option value="">All Statuses</option>
-              <option value="Sent">Sent</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="Draft">Draft</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors select-none"
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      <div className="flex items-center gap-2">
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {{
-                          asc: <FaSortUp className="text-indigo-600" />,
-                          desc: <FaSortDown className="text-indigo-600" />,
-                        }[header.column.getIsSorted() as string] ??
-                          (header.column.getCanSort() ? (
-                            <FaSort className="text-gray-300" />
-                          ) : null)}
-                      </div>
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-gray-50/80 transition-colors"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-6 py-4">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {table.getRowModel().rows.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-6 py-12 text-center text-gray-400"
-                  >
-                    No notifications found matching your search.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="border-t border-gray-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-gray-50/50">
-          {/* Page Size Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">Rows per page:</span>
-            <select
-              value={table.getState().pagination.pageSize}
-              onChange={(e) => {
-                table.setPageSize(Number(e.target.value));
-              }}
-              className="border border-gray-200 rounded-lg text-sm p-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-            >
-              {[10, 20, 50, 100].map((pageSize) => (
-                <option key={pageSize} value={pageSize}>
-                  {pageSize}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Jump to Page & Nav */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">Go to page:</span>
-              <input
-                type="number"
-                min={1}
-                max={table.getPageCount()}
-                defaultValue={table.getState().pagination.pageIndex + 1}
-                onChange={(e) => {
-                  const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                  table.setPageIndex(page);
-                }}
-                className="border border-gray-200 rounded-lg p-1.5 w-16 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500 mr-2">
-                Page{" "}
-                <span className="font-medium text-gray-900">
-                  {table.getState().pagination.pageIndex + 1}
-                </span>{" "}
-                of{" "}
-                <span className="font-medium text-gray-900">
-                  {table.getPageCount()}
-                </span>
-              </span>
-              <button
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <FaChevronLeft size={12} />
-              </button>
-              <button
-                className="p-2 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                <FaChevronRight size={12} />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ReusableTable
+        data={data}
+        columns={columns}
+        searchPlaceholder="Search notifications..."
+      />
 
       {/* Delete Confirmation Modal */}
       <Modal
@@ -553,13 +330,13 @@ const NotificationList: React.FC = () => {
           <>
             <button
               onClick={() => setDeleteModalOpen(false)}
-              className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               onClick={confirmDelete}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg shadow-lg shadow-red-200 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 dark:bg-red-500 dark:hover:bg-red-600 rounded-lg shadow-lg shadow-red-200 dark:shadow-red-900/30 transition-colors"
             >
               Delete
             </button>
@@ -567,16 +344,16 @@ const NotificationList: React.FC = () => {
         }
       >
         <div className="text-center sm:text-left">
-          <p className="text-gray-600 text-sm mb-4">
+          <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
             Are you sure you want to delete this notification? This action
             cannot be undone.
           </p>
           {itemToDelete && (
-            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-left">
-              <p className="font-medium text-gray-900 text-sm">
+            <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600 text-left">
+              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                 {itemToDelete.title}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                 {itemToDelete.message}
               </p>
             </div>

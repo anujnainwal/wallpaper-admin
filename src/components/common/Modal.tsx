@@ -7,6 +7,7 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  maxWidth?: string;
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -15,6 +16,7 @@ const Modal: React.FC<ModalProps> = ({
   title,
   children,
   footer,
+  maxWidth = "max-w-md",
 }) => {
   const [show, setShow] = useState(isOpen);
 
@@ -43,16 +45,18 @@ const Modal: React.FC<ModalProps> = ({
 
       {/* Modal Content */}
       <div
-        className={`bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 relative transform transition-all duration-200 ${
+        className={`bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full ${maxWidth} mx-4 relative transform transition-all duration-200 ${
           isOpen ? "scale-100 translate-y-0" : "scale-95 translate-y-4"
         }`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h3 className="text-lg font-bold text-gray-900">{title}</h3>
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+            {title}
+          </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <FaTimes />
           </button>
@@ -63,7 +67,7 @@ const Modal: React.FC<ModalProps> = ({
 
         {/* Footer */}
         {footer && (
-          <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
+          <div className="flex justify-end gap-3 p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50 rounded-b-2xl">
             {footer}
           </div>
         )}
