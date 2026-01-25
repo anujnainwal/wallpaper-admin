@@ -1,257 +1,202 @@
-import React, { useState, useRef } from "react";
-import { FaSave, FaArrowLeft, FaCloudUploadAlt, FaImage } from "react-icons/fa";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { FaArrowLeft, FaSave } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import { categoryService } from "../../services/categoryService";
+import type { Category } from "../../services/categoryService";
 
 const AddCategory: React.FC = () => {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchParams] = useSearchParams();
+  const parentId = searchParams.get("parent");
+
+  const [loading, setLoading] = useState(false);
+  const [rootCategories, setRootCategories] = useState<Category[]>([]);
+
   const [formData, setFormData] = useState({
     name: "",
-    parentId: "",
     description: "",
+    image: "", // In real app, this would be file upload
+    isActive: true,
+    parent: parentId || "",
   });
-  const [iconPreview, setIconPreview] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [isDragging, setIsDragging] = useState(false);
 
-  // Mock Parent Categories
-  const parents = [
-    { id: "1", name: "Wallpapers" },
-    { id: "2", name: "Ringtones" },
-    { id: "3", name: "Live Wallpapers" },
-  ];
-
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
-  ) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error when user types
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: "" });
-    }
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      validateAndSetImage(file);
-    }
-  };
-
-  const validateAndSetImage = (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setErrors({ ...errors, icon: "Please upload an image file (PNG, JPG)." });
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setErrors({ ...errors, icon: "Image size should be less than 2MB." });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setIconPreview(reader.result as string);
-      setErrors({ ...errors, icon: "" });
+  // Fetch root categories for the dropdown
+  useEffect(() => {
+    const fetchRoots = async () => {
+      try {
+        // Fetch root categories only
+        const data = await categoryService.getAll({ parent: "null" });
+        setRootCategories(data.data);
+      } catch (e) {
+        console.error("Failed to load root categories");
+      }
     };
-    reader.readAsDataURL(file);
-  };
+    fetchRoots();
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      validateAndSetImage(file);
+  // Update formData parent if URL param changes (e.g. navigation)
+  useEffect(() => {
+    if (parentId) {
+      setFormData((prev) => ({ ...prev, parent: parentId }));
     }
-  };
+  }, [parentId]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newErrors: Record<string, string> = {};
+    if (!formData.name) return toast.error("Name is required");
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Category name is required";
+    setLoading(true);
+    try {
+      const payload: any = {
+        ...formData,
+        parent: formData.parent || null, // Convert empty string to null for root
+      };
+
+      await categoryService.create(payload);
+      toast.success("Category created successfully");
+      navigate(
+        formData.parent
+          ? `/content/categories?parent=${formData.parent}`
+          : "/content/categories",
+      );
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to create category");
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-
-    if (!iconPreview) {
-      newErrors.icon = "Category icon is required";
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    // Submit logic here
-    console.log("Submitting:", { ...formData, icon: iconPreview });
-    alert("Category created successfully!");
-    navigate("/content/categories");
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link
-            to="/content/categories"
-            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <FaArrowLeft />
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Add New Category
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">
-              Create a new category for your content
-            </p>
-          </div>
-        </div>
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center gap-4 mb-6">
         <button
-          onClick={handleSubmit}
-          className="flex items-center space-x-2 px-6 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200 font-medium"
+          onClick={() => navigate(-1)}
+          className="p-2 hover:bg-gray-100 rounded-full dark:hover:bg-gray-800 transition"
         >
-          <FaSave />
-          <span>Save Category</span>
+          <FaArrowLeft />
         </button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Add New Category
+        </h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column - Form Fields */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={`w-full px-4 py-2.5 rounded-xl border ${
-                  errors.name
-                    ? "border-red-300 focus:ring-red-200"
-                    : "border-gray-200 focus:ring-indigo-500/20 focus:border-indigo-500"
-                } focus:outline-none focus:ring-2 transition-all`}
-                placeholder="e.g. Abstract Art"
-              />
-              {errors.name && (
-                <p className="mt-1 text-sm text-red-500">{errors.name}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Parent Category (Optional)
-              </label>
-              <select
-                name="parentId"
-                value={formData.parentId}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all bg-white"
-              >
-                <option value="">No Parent (Root Category)</option>
-                {parents.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Select a parent to make this a sub-category.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                rows={4}
-                value={formData.description}
-                onChange={handleChange}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none"
-                placeholder="Brief description of this category..."
-              />
-            </div>
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <form
+          onSubmit={handleSubmit}
+          className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6"
+        >
+          {/* Name */}
+          <div className="md:col-span-1">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Category Name *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+              placeholder="e.g., Nature"
+              required
+            />
           </div>
-        </div>
 
-        {/* Right Column - Icon Upload */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <label className="block text-sm font-medium text-gray-700 mb-4">
-              Category Icon <span className="text-red-500">*</span>
+          {/* Parent Category Selector */}
+          <div className="md:col-span-1">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Parent Category
+            </label>
+            <select
+              value={formData.parent}
+              onChange={(e) =>
+                setFormData({ ...formData, parent: e.target.value })
+              }
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition appearance-none cursor-pointer"
+            >
+              <option value="">None (Root Category)</option>
+              {rootCategories.map((cat) => (
+                <option key={cat.id || cat._id} value={cat.id || cat._id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Description */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              rows={3}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition resize-none"
+              placeholder="Optional description..."
+            />
+          </div>
+
+          {/* Image URL */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Image URL
+            </label>
+            <input
+              type="url"
+              value={formData.image}
+              onChange={(e) =>
+                setFormData({ ...formData, image: e.target.value })
+              }
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+
+          {/* Divider */}
+          <div className="md:col-span-2 border-t border-gray-100 dark:border-gray-700 my-2"></div>
+
+          {/* Footer Actions */}
+          <div className="md:col-span-2 flex items-center justify-between">
+            {/* Active Toggle */}
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={formData.isActive}
+                  onChange={(e) =>
+                    setFormData({ ...formData, isActive: e.target.checked })
+                  }
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+              </div>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-600 transition-colors">
+                Active Status
+              </span>
             </label>
 
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all aspect-square ${
-                isDragging
-                  ? "border-indigo-500 bg-indigo-50"
-                  : errors.icon
-                    ? "border-red-300 bg-red-50"
-                    : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
-              }`}
+            {/* Save Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded-xl hover:bg-indigo-700 hover:shadow-lg hover:shadow-indigo-500/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed font-semibold"
             >
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={handleFileChange}
-              />
-
-              {iconPreview ? (
-                <div className="relative w-full h-full">
-                  <img
-                    src={iconPreview}
-                    alt="Preview"
-                    className="w-full h-full object-contain rounded-lg"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity rounded-lg text-white font-medium">
-                    Change Icon
-                  </div>
-                </div>
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <div className="space-y-2">
-                  <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-2">
-                    <FaCloudUploadAlt size={24} />
-                  </div>
-                  <div className="text-sm font-medium text-gray-900">
-                    Click to upload
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    or drag and drop <br />
-                    PNG, JPG (max 2MB)
-                  </p>
-                </div>
+                <>
+                  <FaSave />
+                  Create Category
+                </>
               )}
-            </div>
-            {errors.icon && (
-              <p className="mt-2 text-sm text-center text-red-500">
-                {errors.icon}
-              </p>
-            )}
+            </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

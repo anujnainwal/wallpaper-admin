@@ -11,6 +11,7 @@ import {
   loginFailure,
 } from "../../store/slices/authSlice";
 import AuthBranding from "../../components/auth/AuthBranding";
+import { authService } from "../../services/authService";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -22,7 +23,7 @@ type LoginFormInputs = z.infer<typeof loginSchema>;
 const Login: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { loading } = useAppSelector((state) => state.auth);
+  const { loading, error } = useAppSelector((state) => state.auth);
 
   const {
     register,
@@ -36,23 +37,30 @@ const Login: React.FC = () => {
 
   const onSubmit = async (data: LoginFormInputs) => {
     dispatch(loginStart());
+    try {
+      const response = await authService.adminLogin({
+        email: data.email,
+        password: data.password,
+      });
 
-    // Simulate API call
-    setTimeout(() => {
-      // Mock credentials check
-      if (data.email === "admin@example.com" && data.password === "admin") {
-        dispatch(
-          loginSuccess({
-            user: { id: "1", name: "Admin", email: "admin@example.com" },
-            token: "fake-jwt-token",
-          }),
-        );
-        navigate("/");
-      } else {
-        dispatch(loginFailure());
-        alert("Invalid credentials! Try admin@example.com / admin");
-      }
-    }, 1500);
+      // The backend returns token as { accessToken, refreshToken }
+      // We will access the accessToken property.
+      const accessToken = response.token.accessToken;
+
+      dispatch(
+        loginSuccess({
+          user: response.user,
+          token: accessToken,
+        }),
+      );
+      navigate("/");
+    } catch (err: any) {
+      console.error(err);
+      const errorMessage =
+        err.response?.data?.message || err.message || "Login failed";
+      dispatch(loginFailure(errorMessage));
+      // Optional: Show toast or alert here if needed
+    }
   };
 
   return (
@@ -81,7 +89,7 @@ const Login: React.FC = () => {
                 <input
                   {...register("email")}
                   type="email"
-                  placeholder="hisalim.ux@gmail.com"
+                  placeholder="admin@example.com"
                   className={`w-full bg-gray-50 border ${errors.email ? "border-red-500 bg-red-50" : "border-gray-200"} text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-11 p-4 outline-none transition-colors`}
                 />
               </div>
@@ -119,6 +127,16 @@ const Login: React.FC = () => {
                 </p>
               )}
             </div>
+
+            {/* Error Message Display */}
+            {error && (
+              <div
+                className="p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50"
+                role="alert"
+              >
+                <span className="font-medium">Error!</span> {error}
+              </div>
+            )}
 
             <div className="flex justify-end">
               <Link

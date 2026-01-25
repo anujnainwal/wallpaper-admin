@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -20,35 +20,82 @@ import {
   FaArrowUp,
   FaMobileAlt,
 } from "react-icons/fa";
+import {
+  dashboardService,
+  type DashboardStats,
+} from "../../services/dashboardService";
 
 const Home: React.FC = () => {
-  // Mock Data for Charts
+  const defaultStats: DashboardStats = {
+    users: { total: 0, active: 0, growth: 0 },
+    devices: {
+      android: 0,
+      ios: 0,
+      distribution: { android: 0, ios: 0 },
+    },
+    wallpapers: {
+      total: 0,
+      active: 0,
+      pending: 0,
+      recent: [],
+    },
+    countries: [],
+    userActivity: [],
+  };
+
+  const [stats, setStats] = useState<DashboardStats>(defaultStats);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await dashboardService.getStats();
+      setStats(data);
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to load dashboard data. Showing empty state.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
   const platformData = [
-    { name: "Android", value: 15400 },
-    { name: "iOS", value: 9132 },
+    { name: "Android", value: stats.devices.android },
+    { name: "iOS", value: stats.devices.ios },
   ];
   const PLATFORM_COLORS = ["#10B981", "#6366f1"]; // Android Green, iOS Indigo
 
-  const userActivityData = [
-    { name: "Mon", active: 12000 },
-    { name: "Tue", active: 13500 },
-    { name: "Wed", active: 11000 },
-    { name: "Thu", active: 14200 },
-    { name: "Fri", active: 15800 },
-    { name: "Sat", active: 18900 },
-    { name: "Sun", active: 19500 },
-  ];
-
-  const countryData = [
-    { country: "India", users: 45, flag: "🇮🇳", color: "bg-orange-500" },
-    { country: "USA", users: 25, flag: "🇺🇸", color: "bg-blue-600" },
-    { country: "UK", users: 10, flag: "🇬🇧", color: "bg-red-600" },
-    { country: "Brazil", users: 8, flag: "🇧🇷", color: "bg-green-500" },
-    { country: "Others", users: 12, flag: "🌍", color: "bg-gray-400" },
-  ];
-
   return (
     <div className="space-y-8">
+      {/* Error Alert */}
+      {error && (
+        <div
+          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg relative flex items-center justify-between"
+          role="alert"
+        >
+          <span className="block sm:inline">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-700 dark:text-red-400 font-bold hover:text-red-900"
+          >
+            ×
+          </button>
+        </div>
+      )}
       {/* Header Section */}
       <div className="flex justify-between items-end">
         <div>
@@ -78,7 +125,7 @@ const Home: React.FC = () => {
               <FaUsers className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-              <FaArrowUp className="w-3 h-3 mr-1" /> 12%
+              <FaArrowUp className="w-3 h-3 mr-1" /> {stats.users.growth}%
             </span>
           </div>
           <div className="mt-4">
@@ -86,7 +133,7 @@ const Home: React.FC = () => {
               Total Users
             </h3>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              24,532
+              {stats.users.total.toLocaleString()}
             </p>
           </div>
         </div>
@@ -97,6 +144,7 @@ const Home: React.FC = () => {
             <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
               <FaMobileAlt className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             </div>
+            {/* Mock percentage as dynamic data not fully available yet */}
             <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
               <FaArrowUp className="w-3 h-3 mr-1" /> 8%
             </span>
@@ -106,7 +154,7 @@ const Home: React.FC = () => {
               Active Users
             </h3>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              12,404
+              {stats.users.active.toLocaleString()}
             </p>
             <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
               Last 30 days
@@ -121,7 +169,8 @@ const Home: React.FC = () => {
               <FaAndroid className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-              <FaArrowUp className="w-3 h-3 mr-1" /> 5%
+              <FaArrowUp className="w-3 h-3 mr-1" />{" "}
+              {stats.devices.distribution.android}%
             </span>
           </div>
           <div className="mt-4">
@@ -129,7 +178,7 @@ const Home: React.FC = () => {
               Android Users
             </h3>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              15,400
+              {stats.devices.android.toLocaleString()}
             </p>
           </div>
         </div>
@@ -141,7 +190,8 @@ const Home: React.FC = () => {
               <FaApple className="w-6 h-6 text-gray-800 dark:text-gray-200" />
             </div>
             <span className="flex items-center text-xs font-medium text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-              <FaArrowUp className="w-3 h-3 mr-1" /> 18%
+              <FaArrowUp className="w-3 h-3 mr-1" />{" "}
+              {stats.devices.distribution.ios}%
             </span>
           </div>
           <div className="mt-4">
@@ -149,7 +199,7 @@ const Home: React.FC = () => {
               iOS Users
             </h3>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-              9,132
+              {stats.devices.ios.toLocaleString()}
             </p>
           </div>
         </div>
@@ -170,7 +220,7 @@ const Home: React.FC = () => {
           </div>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={userActivityData}>
+              <BarChart data={stats.userActivity}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
@@ -242,7 +292,7 @@ const Home: React.FC = () => {
                 </span>
               </div>
               <span className="font-bold text-gray-900 dark:text-white">
-                63%
+                {stats.devices.distribution.android}%
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -253,7 +303,7 @@ const Home: React.FC = () => {
                 </span>
               </div>
               <span className="font-bold text-gray-900 dark:text-white">
-                37%
+                {stats.devices.distribution.ios}%
               </span>
             </div>
           </div>
@@ -271,7 +321,7 @@ const Home: React.FC = () => {
             <FaGlobeAmericas className="text-gray-400" />
           </div>
           <div className="space-y-5">
-            {countryData.map((item) => (
+            {stats.countries.map((item) => (
               <div key={item.country}>
                 <div className="flex justify-between text-sm mb-2">
                   <div className="flex items-center gap-2">
@@ -295,7 +345,7 @@ const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* Recent Uploads (Keeping existing table structure but compacted) */}
+        {/* Recent Uploads */}
         <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">
@@ -321,26 +371,7 @@ const Home: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {[
-                  {
-                    title: "Neon Nights",
-                    category: "Abstract",
-                    downloads: 1240,
-                    status: "Active",
-                  },
-                  {
-                    title: "Mountain Peak",
-                    category: "Nature",
-                    downloads: 890,
-                    status: "Pending",
-                  },
-                  {
-                    title: "Ocean Waves",
-                    category: "Nature",
-                    downloads: 2300,
-                    status: "Active",
-                  },
-                ].map((item, index) => (
+                {stats.wallpapers.recent.map((item, index) => (
                   <tr
                     key={index}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
