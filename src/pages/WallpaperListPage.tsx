@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { ReusableTable } from "../components/common/ReusableTable";
-import { FaDownload, FaEye, FaHeart } from "react-icons/fa";
+import { FaDownload, FaEye, FaHeart, FaEdit, FaTrash } from "react-icons/fa";
 
 interface Wallpaper {
   id: string;
@@ -184,6 +184,9 @@ const WallpaperListPage: React.FC = () => {
       {
         accessorKey: "createdAt",
         header: "Date",
+        meta: {
+          filterVariant: "date",
+        },
         cell: (info) => (
           <span className="text-gray-400 text-xs whitespace-nowrap">
             {new Date(info.getValue() as string).toLocaleDateString()}
@@ -218,6 +221,118 @@ const WallpaperListPage: React.FC = () => {
           setData((prev) => prev.filter((r) => r.id !== row.id));
         }}
         basePath="/wallpapers"
+        renderGridItem={(row) => {
+          const wallpaper = row.original;
+          return (
+            <div className="group bg-white dark:bg-gray-800 rounded-3xl overflow-hidden border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 h-full flex flex-col">
+              {/* Image Cover */}
+              <div className="relative aspect-4/3 overflow-hidden bg-gray-100">
+                <img
+                  src={wallpaper.imageUrl}
+                  alt={wallpaper.title}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent opacity-90" />
+
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border ${
+                      wallpaper.status === "Active"
+                        ? "bg-emerald-500/20 text-emerald-100 border-emerald-500/30"
+                        : "bg-gray-500/20 text-gray-100 border-gray-500/30"
+                    }`}
+                  >
+                    {wallpaper.status}
+                  </span>
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4">
+                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-semibold bg-white/20 text-white backdrop-blur-sm mb-2 border border-white/10">
+                    {wallpaper.category}
+                  </span>
+                  <h3 className="text-white font-bold text-xl leading-tight truncate drop-shadow-md">
+                    {wallpaper.title}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Content Body */}
+              <div className="p-5 flex-1 flex flex-col justify-between gap-4">
+                <div className="grid grid-cols-3 gap-2 py-2 border-b border-gray-100 dark:border-gray-700 pb-4">
+                  <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                      <FaDownload size={10} />
+                      <span className="text-[10px] uppercase font-bold tracking-wider">
+                        DLs
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {(wallpaper.downloads / 1000).toFixed(1)}k
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                    <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 mb-1">
+                      <FaEye size={10} />
+                      <span className="text-[10px] uppercase font-bold tracking-wider">
+                        Views
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {(wallpaper.views / 1000).toFixed(1)}k
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center p-2 rounded-xl bg-pink-50 dark:bg-pink-900/20">
+                    <div className="flex items-center gap-1.5 text-pink-500 dark:text-pink-300 mb-1">
+                      <FaHeart size={10} />
+                      <span className="text-[10px] uppercase font-bold tracking-wider">
+                        Likes
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">
+                      {wallpaper.likes}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">
+                      Format
+                    </span>
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300 font-mono">
+                      {wallpaper.resolution}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log("Edit", wallpaper.id);
+                      }}
+                      className="p-2.5 rounded-xl text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 dark:hover:text-indigo-400 transition-colors"
+                      title="Edit"
+                    >
+                      <FaEdit />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setData((prev) =>
+                          prev.filter((r) => r.id !== wallpaper.id),
+                        );
+                      }}
+                      className="p-2.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 dark:hover:text-red-400 transition-colors"
+                      title="Delete"
+                    >
+                      <FaTrash />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }}
       />
     </div>
   );

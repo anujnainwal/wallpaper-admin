@@ -30,6 +30,8 @@ import ProfilePage from "../pages/ProfilePage";
 import FeedbackList from "../pages/feedback/FeedbackList";
 import NotFoundPage from "../pages/error/NotFoundPage";
 import ForbiddenPage from "../pages/error/ForbiddenPage";
+import AuditLogList from "../pages/audit-logs/AuditLogList";
+import IntegrationSettings from "../pages/settings/IntegrationSettings";
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const { isAuthenticated } = useAppSelector((state) => state.auth);
@@ -95,6 +97,7 @@ const AppRoutes: React.FC = () => {
         <Route path="help" element={<HelpSupport />} />
         <Route path="temp-table" element={<TempTablePage />} />
         <Route path="api-table" element={<ApiTablePage />} />
+        <Route path="system/audit-logs" element={<AuditLogList />} />
 
         {/* User Management */}
         <Route path="users/list" element={<UserList />} />
@@ -111,6 +114,9 @@ const AppRoutes: React.FC = () => {
         <Route path="roles/list" element={<RoleList />} />
         <Route path="roles/add" element={<AddRole />} />
         <Route path="roles/edit/:id" element={<AddRole />} />
+
+        {/* Settings */}
+        <Route path="settings/integrations" element={<IntegrationSettings />} />
 
         {/* Profile */}
         <Route path="profile" element={<ProfilePage />} />

@@ -347,9 +347,24 @@ const DashboardLayout: React.FC = () => {
     {
       title: "System",
       items: [
-        { path: "/settings", label: "Settings", icon: <FaCog /> },
+        {
+          label: "Settings",
+          icon: <FaCog />,
+          subItems: [
+            {
+              path: "/settings/integrations",
+              label: "Integrations",
+              icon: <FaCloud />,
+            },
+          ],
+        },
         { path: "/temp-table", label: "Temporary", icon: <FaTable /> },
         { path: "/api-table", label: "API Table", icon: <FaCloud /> },
+        {
+          path: "/system/audit-logs",
+          label: "Audit Logs",
+          icon: <FaList />, // Using FaList as FaClipboardList might not be imported yet
+        },
       ],
     },
     {

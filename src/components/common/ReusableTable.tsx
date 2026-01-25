@@ -13,6 +13,13 @@ import {
   type OnChangeFn,
   type Row,
 } from "@tanstack/react-table";
+
+// Extend native Table meta
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<TData, TValue> {
+    filterVariant?: "text" | "range" | "select" | "date" | "date-range";
+  }
+}
 import {
   FaSearch,
   FaSort,
@@ -242,11 +249,18 @@ export function ReusableTable<TData, TValue>({
     setShowColumnFilters(false);
   };
 
-  const updateTempFilter = (columnId: string, value: string) => {
+  const updateTempFilter = (columnId: string, value: any) => {
     setTempFilters((prev) => {
       const existing = prev.find((f) => f.id === columnId);
-      if (!value) {
-        return prev.filter((f) => f.id !== columnId);
+      if (value === undefined || value === "") {
+        // Keep existing if value is empty/undefined? No, remove it.
+        // But for array, empty check is different.
+        if (Array.isArray(value)) {
+          if (!value[0] && !value[1])
+            return prev.filter((f) => f.id !== columnId);
+        } else {
+          return prev.filter((f) => f.id !== columnId);
+        }
       }
       if (existing) {
         return prev.map((f) => (f.id === columnId ? { ...f, value } : f));
@@ -710,28 +724,84 @@ export function ReusableTable<TData, TValue>({
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
             {table.getAllColumns().map((column) => {
               if (!column.getCanFilter()) return null;
-              // Find current temp filter value for this column
+
               const filterValue =
                 tempFilters.find((f) => f.id === column.id)?.value ??
-                (column.getFilterValue() as string) ??
+                (column.getFilterValue() as any) ??
                 "";
+
+              const meta = column.columnDef.meta;
+              const filterVariant = meta?.filterVariant || "text";
 
               return (
                 <div key={column.id} className="space-y-2">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {column.columnDef.header as string}
                   </label>
-                  <input
-                    type="text"
-                    value={filterValue as string}
-                    onChange={(e) =>
-                      updateTempFilter(column.id, e.target.value)
-                    }
-                    className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                    placeholder={`Filter by ${
-                      column.columnDef.header as string
-                    }...`}
-                  />
+
+                  {filterVariant === "date-range" ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={(filterValue as [string, string])?.[0] ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const current = (filterValue as [
+                              string,
+                              string,
+                            ]) || ["", ""];
+                            updateTempFilter(column.id, [
+                              val,
+                              current[1],
+                            ] as any);
+                          }}
+                          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          placeholder="From"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="date"
+                          value={(filterValue as [string, string])?.[1] ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const current = (filterValue as [
+                              string,
+                              string,
+                            ]) || ["", ""];
+                            updateTempFilter(column.id, [
+                              current[0],
+                              val,
+                            ] as any);
+                          }}
+                          className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          placeholder="To"
+                        />
+                      </div>
+                    </div>
+                  ) : filterVariant === "date" ? (
+                    <input
+                      type="date"
+                      value={filterValue as string}
+                      onChange={(e) =>
+                        updateTempFilter(column.id, e.target.value)
+                      }
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    />
+                  ) : (
+                    <input
+                      type="text"
+                      value={filterValue as string}
+                      onChange={(e) =>
+                        updateTempFilter(column.id, e.target.value)
+                      }
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                      placeholder={`Filter by ${
+                        column.columnDef.header as string
+                      }...`}
+                    />
+                  )}
                 </div>
               );
             })}
