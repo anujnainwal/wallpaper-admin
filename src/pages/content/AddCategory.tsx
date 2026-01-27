@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useParams } from "react-router-dom";
 import { FaArrowLeft, FaSave } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { categoryService } from "../../services/categoryService";
@@ -9,6 +9,8 @@ const AddCategory: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const parentId = searchParams.get("parent");
+  const { id } = useParams();
+  const isEditMode = !!id;
 
   const [loading, setLoading] = useState(false);
   const [rootCategories, setRootCategories] = useState<Category[]>([]);
@@ -16,10 +18,12 @@ const AddCategory: React.FC = () => {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    image: "", // In real app, this would be file upload
     isActive: true,
     parent: parentId || "",
   });
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
 
   // Fetch root categories for the dropdown
   useEffect(() => {
@@ -35,12 +39,39 @@ const AddCategory: React.FC = () => {
     fetchRoots();
   }, []);
 
-  // Update formData parent if URL param changes (e.g. navigation)
+  // Fetch category data if in edit mode
   useEffect(() => {
-    if (parentId) {
+    if (isEditMode && id) {
+      const fetchCategory = async () => {
+        setLoading(true);
+        try {
+          const category = await categoryService.getById(id);
+          setFormData({
+            name: category.name,
+            description: category.description || "",
+            isActive: category.isActive,
+            parent: category.parent?._id || "", // Ensure we get ID string
+          });
+          if (category.image) {
+            setImagePreview(category.image);
+          }
+        } catch (error) {
+          toast.error("Failed to load category details");
+          navigate("/content/categories");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchCategory();
+    }
+  }, [isEditMode, id, navigate]);
+
+  // Update formData parent if URL param changes (e.g. navigation) - ONLY in Add mode
+  useEffect(() => {
+    if (parentId && !isEditMode) {
       setFormData((prev) => ({ ...prev, parent: parentId }));
     }
-  }, [parentId]);
+  }, [parentId, isEditMode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,13 +79,21 @@ const AddCategory: React.FC = () => {
 
     setLoading(true);
     try {
-      const payload: any = {
-        ...formData,
-        parent: formData.parent || null, // Convert empty string to null for root
-      };
+      const payload = new FormData();
+      payload.append("name", formData.name);
+      payload.append("description", formData.description);
+      payload.append("isActive", String(formData.isActive));
+      if (formData.parent) payload.append("parent", formData.parent);
+      if (imageFile) payload.append("image", imageFile);
 
-      await categoryService.create(payload);
-      toast.success("Category created successfully");
+      if (isEditMode && id) {
+        await categoryService.update(id, payload);
+        toast.success("Category updated successfully");
+      } else {
+        await categoryService.create(payload);
+        toast.success("Category created successfully");
+      }
+
       navigate(
         formData.parent
           ? `/content/categories?parent=${formData.parent}`
@@ -78,7 +117,7 @@ const AddCategory: React.FC = () => {
           <FaArrowLeft />
         </button>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Add New Category
+          {isEditMode ? "Edit Category" : "Add New Category"}
         </h1>
       </div>
 
@@ -141,20 +180,42 @@ const AddCategory: React.FC = () => {
             />
           </div>
 
-          {/* Image URL */}
+          {/* Image Upload */}
           <div className="md:col-span-2">
             <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-              Image URL
+              Category Icon
             </label>
-            <input
-              type="url"
-              value={formData.image}
-              onChange={(e) =>
-                setFormData({ ...formData, image: e.target.value })
-              }
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
-              placeholder="https://example.com/image.jpg"
-            />
+            <div className="flex items-center gap-4">
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="Preview"
+                  className="w-16 h-16 rounded-xl object-cover border border-gray-200 dark:border-gray-600"
+                />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    const file = e.target.files[0];
+                    setImageFile(file);
+                    setImagePreview(URL.createObjectURL(file));
+                  }
+                }}
+                className="block w-full text-sm text-gray-500
+                  file:mr-4 file:py-2.5 file:px-4
+                  file:rounded-xl file:border-0
+                  file:text-sm file:font-semibold
+                  file:bg-indigo-50 file:text-indigo-700
+                  hover:file:bg-indigo-100
+                  dark:file:bg-indigo-900/30 dark:file:text-indigo-300
+                "
+              />
+            </div>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              Upload an image (JPG, PNG, WEBP). Max 5MB.
+            </p>
           </div>
 
           {/* Divider */}
@@ -191,7 +252,7 @@ const AddCategory: React.FC = () => {
               ) : (
                 <>
                   <FaSave />
-                  Create Category
+                  {isEditMode ? "Update Category" : "Create Category"}
                 </>
               )}
             </button>

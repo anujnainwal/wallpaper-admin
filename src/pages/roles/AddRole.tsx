@@ -60,7 +60,7 @@ const AddRole: React.FC = () => {
       permissions: {
         ...prev.permissions,
         [module]: {
-          ...prev.permissions[module],
+          ...prev.permissions[module as keyof ModulePermissions],
           [permission]: checked,
         },
       },
@@ -82,13 +82,13 @@ const AddRole: React.FC = () => {
   };
 
   const isModuleFullySelected = (module: string): boolean => {
-    const modulePerms = formData.permissions[module];
+    const modulePerms = formData.permissions[module as keyof ModulePermissions];
     if (!modulePerms) return false;
     return getAllPermissions().every((perm) => modulePerms[perm] === true);
   };
 
   const isModulePartiallySelected = (module: string): boolean => {
-    const modulePerms = formData.permissions[module];
+    const modulePerms = formData.permissions[module as keyof ModulePermissions];
     if (!modulePerms) return false;
     const selectedCount = getAllPermissions().filter(
       (perm) => modulePerms[perm] === true,

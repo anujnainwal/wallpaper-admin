@@ -19,7 +19,7 @@ export interface AuthResponse {
     role: string;
     permissions: string[];
   };
-  token: {
+  tokens: {
       accessToken: string;
       refreshToken: string;
   };

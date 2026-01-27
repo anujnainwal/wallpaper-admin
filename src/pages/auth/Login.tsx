@@ -42,10 +42,7 @@ const Login: React.FC = () => {
         email: data.email,
         password: data.password,
       });
-
-      // The backend returns token as { accessToken, refreshToken }
-      // We will access the accessToken property.
-      const accessToken = response.token.accessToken;
+      const accessToken = response.tokens.accessToken;
 
       dispatch(
         loginSuccess({
@@ -56,10 +53,17 @@ const Login: React.FC = () => {
       navigate("/");
     } catch (err: any) {
       console.error(err);
-      const errorMessage =
-        err.response?.data?.message || err.message || "Login failed";
+      let errorMessage = "Login failed";
+
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (typeof err === "string") {
+        errorMessage = err;
+      }
+
       dispatch(loginFailure(errorMessage));
-      // Optional: Show toast or alert here if needed
     }
   };
 

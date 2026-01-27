@@ -1,6 +1,10 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import type { ColumnDef } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+} from "@tanstack/react-table";
 import { ReusableTable } from "../../components/common/ReusableTable";
 import Modal from "../../components/common/Modal";
 import {
@@ -14,141 +18,75 @@ import {
   FaShieldAlt,
   FaCrown,
   FaUserTie,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
-
-// Types
-type User = {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  role: "Admin" | "Editor" | "Viewer";
-  status: "Active" | "Inactive" | "Suspended";
-  joinedDate: string;
-  lastActive: string;
-  totalWallpapers: number;
-};
-
-// Mock Data Generator
-const generateData = (): User[] => {
-  const baseData: User[] = [
-    {
-      id: 1,
-      name: "John Doe",
-      email: "john.doe@example.com",
-      phone: "+1 234-567-8900",
-      role: "Admin",
-      status: "Active",
-      joinedDate: "2023-01-15",
-      lastActive: "2024-01-24",
-      totalWallpapers: 245,
-    },
-    {
-      id: 2,
-      name: "Jane Smith",
-      email: "jane.smith@example.com",
-      phone: "+1 234-567-8901",
-      role: "Editor",
-      status: "Active",
-      joinedDate: "2023-03-20",
-      lastActive: "2024-01-23",
-      totalWallpapers: 189,
-    },
-    {
-      id: 3,
-      name: "Mike Johnson",
-      email: "mike.j@example.com",
-      phone: "+1 234-567-8902",
-      role: "Viewer",
-      status: "Active",
-      joinedDate: "2023-05-10",
-      lastActive: "2024-01-22",
-      totalWallpapers: 0,
-    },
-    {
-      id: 4,
-      name: "Sarah Williams",
-      email: "sarah.w@example.com",
-      phone: "+1 234-567-8903",
-      role: "Editor",
-      status: "Inactive",
-      joinedDate: "2023-02-14",
-      lastActive: "2023-12-15",
-      totalWallpapers: 156,
-    },
-    {
-      id: 5,
-      name: "David Brown",
-      email: "david.brown@example.com",
-      phone: "+1 234-567-8904",
-      role: "Admin",
-      status: "Active",
-      joinedDate: "2022-11-05",
-      lastActive: "2024-01-24",
-      totalWallpapers: 312,
-    },
-    {
-      id: 6,
-      name: "Emily Davis",
-      email: "emily.d@example.com",
-      phone: "+1 234-567-8905",
-      role: "Editor",
-      status: "Suspended",
-      joinedDate: "2023-07-22",
-      lastActive: "2024-01-10",
-      totalWallpapers: 78,
-    },
-    {
-      id: 7,
-      name: "Robert Miller",
-      email: "robert.m@example.com",
-      phone: "+1 234-567-8906",
-      role: "Viewer",
-      status: "Active",
-      joinedDate: "2023-09-18",
-      lastActive: "2024-01-24",
-      totalWallpapers: 0,
-    },
-    {
-      id: 8,
-      name: "Lisa Anderson",
-      email: "lisa.a@example.com",
-      phone: "+1 234-567-8907",
-      role: "Editor",
-      status: "Active",
-      joinedDate: "2023-04-30",
-      lastActive: "2024-01-23",
-      totalWallpapers: 203,
-    },
-  ];
-
-  // Generate more mock data for pagination testing
-  const moreData = Array.from({ length: 42 }).map((_, i) => ({
-    id: 9 + i,
-    name: `User ${9 + i}`,
-    email: `user${9 + i}@example.com`,
-    phone: `+1 234-567-${8900 + i}`,
-    role: (["Admin", "Editor", "Viewer"] as const)[
-      Math.floor(Math.random() * 3)
-    ],
-    status: (["Active", "Inactive", "Suspended"] as const)[
-      Math.floor(Math.random() * 3)
-    ],
-    joinedDate: "2023-06-01",
-    lastActive: "2024-01-20",
-    totalWallpapers: Math.floor(Math.random() * 300),
-  }));
-
-  return [...baseData, ...moreData];
-};
+import { userService, type User } from "../../services/userService";
+import toast from "react-hot-toast";
 
 const UserList: React.FC = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState(() => generateData());
+
+  // Data State
+  const [data, setData] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [rowCount, setRowCount] = useState(0);
+
+  // Table State
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
 
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<User | null>(null);
+
+  // Fetch Data
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const params: any = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+        search: globalFilter,
+      };
+
+      if (sorting.length > 0) {
+        params.sortBy = sorting[0].id; // Assumption: backend supports this
+        params.sortOrder = sorting[0].desc ? "desc" : "asc";
+      }
+
+      const response: any = await userService.getAll(params);
+      // Adjust based on actual response structure { success: true, data: { data: [], total: ... } }
+      // The service returns response.data, so it should be { data: [], total, ... } directly if standardized
+      // Let's assume standard response util structure: { success: true, data: { data: [...], total: ... } }
+      // But my service returns response.data directly.
+      // Checking backend: ResponseUtil.paginated sends { data, total, page, limit } directly (no success wrapper inside specific methods? No, usually generic success wrapper).
+      // Actually ResponseUtil.paginated sends { success: true, statusCode: 200, data: { data: [], total, ... } }
+      // And service returns response.data which is the whole body.
+      // So response.data.data is the list.
+
+      if (response && response.data) {
+        setData(response.data.data || []);
+        setRowCount(response.data.total || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch users", error);
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+    }
+  }, [pagination.pageIndex, pagination.pageSize, globalFilter, sorting]);
+
+  // Debounce fetch for search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [fetchData]);
 
   const handleDeleteClick = (user: User) => {
     setItemToDelete(user);
@@ -156,24 +94,31 @@ const UserList: React.FC = () => {
   };
 
   const handleEditClick = (user: User) => {
-    navigate(`/users/edit/${user.id}`);
+    navigate(`/users/edit/${user._id}`);
   };
 
-  const confirmDelete = () => {
-    if (itemToDelete) {
-      setData((prev) => prev.filter((item) => item.id !== itemToDelete.id));
-      setDeleteModalOpen(false);
-      setItemToDelete(null);
+  const confirmDelete = async () => {
+    if (itemToDelete && itemToDelete._id) {
+      try {
+        await userService.delete(itemToDelete._id);
+        toast.success("User deleted successfully");
+        fetchData(); // Refresh list
+      } catch (error) {
+        toast.error("Failed to delete user");
+      } finally {
+        setDeleteModalOpen(false);
+        setItemToDelete(null);
+      }
     }
   };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case "Admin":
+      case "admin":
         return <FaCrown className="text-yellow-500 dark:text-yellow-400" />;
-      case "Editor":
+      case "editor":
         return <FaUserTie className="text-blue-500 dark:text-blue-400" />;
-      case "Viewer":
+      case "viewer":
         return <FaUser className="text-gray-500 dark:text-gray-400" />;
       default:
         return <FaUser className="text-gray-500 dark:text-gray-400" />;
@@ -183,20 +128,18 @@ const UserList: React.FC = () => {
   const columns = useMemo<ColumnDef<User>[]>(
     () => [
       {
-        accessorKey: "name",
+        id: "userInfo",
         header: "User Info",
-        cell: ({ getValue, row }) => (
+        accessorFn: (row) => `${row.firstName} ${row.lastName}`,
+        cell: ({ row }) => (
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-              {(getValue() as string)
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()}
+              {row.original.firstName?.[0]?.toUpperCase()}
+              {row.original.lastName?.[0]?.toUpperCase()}
             </div>
             <div className="flex flex-col">
               <span className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                {getValue() as string}
+                {row.original.firstName} {row.original.lastName}
               </span>
               <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                 <FaEnvelope size={10} />
@@ -207,14 +150,44 @@ const UserList: React.FC = () => {
         ),
       },
       {
-        accessorKey: "phone",
+        accessorKey: "phoneNumber",
         header: "Phone",
-        cell: ({ getValue }) => (
+        cell: ({ row }) => (
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-            <FaPhone size={12} className="text-gray-400 dark:text-gray-500" />
-            <span className="text-sm">{getValue() as string}</span>
+            {row.original.phoneNumber ? (
+              <>
+                <FaPhone
+                  size={12}
+                  className="text-gray-400 dark:text-gray-500"
+                />
+                <span className="text-sm">
+                  {row.original.countryCode} {row.original.phoneNumber}
+                </span>
+              </>
+            ) : (
+              <span className="text-xs text-gray-400">-</span>
+            )}
           </div>
         ),
+      },
+      {
+        accessorKey: "country",
+        header: "Location",
+        cell: ({ row }) => {
+          const country = row.original.country;
+          const city = row.original.city;
+          if (!country && !city)
+            return <span className="text-xs text-gray-400">-</span>;
+          return (
+            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-300">
+              <FaMapMarkerAlt size={12} className="text-gray-400" />
+              <span>
+                {city ? `${city}, ` : ""}
+                {country}
+              </span>
+            </div>
+          );
+        },
       },
       {
         accessorKey: "role",
@@ -224,24 +197,15 @@ const UserList: React.FC = () => {
           return (
             <div className="flex items-center gap-2">
               {getRoleIcon(role)}
-              <span
-                className={`text-sm font-medium ${
-                  role === "Admin"
-                    ? "text-yellow-700 dark:text-yellow-400"
-                    : role === "Editor"
-                      ? "text-blue-700 dark:text-blue-400"
-                      : "text-gray-700 dark:text-gray-400"
-                }`}
-              >
+              <span className="text-sm font-medium capitalize text-gray-700 dark:text-gray-300">
                 {role}
               </span>
             </div>
           );
         },
-        filterFn: "equals",
       },
       {
-        accessorKey: "status",
+        accessorKey: "accountStatus",
         header: "Status",
         cell: ({ getValue }) => {
           const status = getValue() as string;
@@ -264,34 +228,6 @@ const UserList: React.FC = () => {
             </span>
           );
         },
-        filterFn: "equals",
-      },
-      {
-        accessorKey: "totalWallpapers",
-        header: "Wallpapers",
-        cell: ({ getValue }) => (
-          <span className="font-medium text-gray-900 dark:text-gray-100">
-            {getValue() as number}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "joinedDate",
-        header: "Joined",
-        cell: ({ getValue }) => (
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            {getValue() as string}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "lastActive",
-        header: "Last Active",
-        cell: ({ getValue }) => (
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            {getValue() as string}
-          </span>
-        ),
       },
       {
         id: "actions",
@@ -327,7 +263,7 @@ const UserList: React.FC = () => {
             User Management
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Manage admin users and their permissions.
+            Manage system users and admins.
           </p>
         </div>
         <button
@@ -341,7 +277,17 @@ const UserList: React.FC = () => {
       <ReusableTable
         data={data}
         columns={columns}
-        searchPlaceholder="Search users by name, email, or phone..."
+        searchPlaceholder="Search by name, email, or phone..."
+        loading={loading}
+        // Server-side props
+        pageCount={Math.ceil(rowCount / pagination.pageSize)}
+        pagination={pagination}
+        onPaginationChange={setPagination}
+        sorting={sorting}
+        onSortingChange={setSorting}
+        globalFilter={globalFilter}
+        onGlobalFilterChange={setGlobalFilter}
+        onEditPage={(row) => handleEditClick(row)}
       />
 
       {/* Delete Confirmation Modal */}
@@ -369,34 +315,22 @@ const UserList: React.FC = () => {
         <div className="text-center sm:text-left">
           <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
             Are you sure you want to delete this user? This action cannot be
-            undone and will remove all associated data.
+            undone.
           </p>
           {itemToDelete && (
             <div className="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg border border-gray-100 dark:border-gray-600 text-left">
               <div className="flex items-center gap-3 mb-2">
                 <div className="w-10 h-10 rounded-full bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-                  {itemToDelete.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()}
+                  {itemToDelete.firstName?.[0]?.toUpperCase()}
                 </div>
                 <div>
                   <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                    {itemToDelete.name}
+                    {itemToDelete.firstName} {itemToDelete.lastName}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
                     {itemToDelete.email}
                   </p>
                 </div>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
-                <span className="flex items-center gap-1">
-                  <FaShieldAlt size={10} />
-                  {itemToDelete.role}
-                </span>
-                <span>•</span>
-                <span>{itemToDelete.totalWallpapers} wallpapers</span>
               </div>
             </div>
           )}

@@ -6,7 +6,7 @@ import {
   FaLock,
   FaSave,
   FaUserCircle,
-  FaShieldAlt,
+  // FaShieldAlt,
   FaDesktop,
   FaMobileAlt,
   FaTabletAlt,

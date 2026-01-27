@@ -13,6 +13,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   label?: string;
   disabled?: boolean;
+  isLoading?: boolean;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -22,6 +23,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   placeholder = "Select...",
   label,
   disabled = false,
+  isLoading = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -72,7 +74,11 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 : "text-gray-400 dark:text-gray-500"
             }`}
           >
-            {selectedOption ? selectedOption.name : placeholder}
+            {isLoading
+              ? "Loading..."
+              : selectedOption
+                ? selectedOption.name
+                : placeholder}
           </span>
           <FaChevronDown
             className={`text-gray-400 text-xs transition-transform ${

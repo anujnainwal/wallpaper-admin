@@ -1,6 +1,8 @@
 import React from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useAppSelector } from "../hooks/storeHook";
+import { useAppSelector, useAppDispatch } from "../hooks/storeHook";
+import { logout } from "../store/slices/authSlice";
+import { jwtDecode } from "jwt-decode";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import Home from "../pages/dashboard/Home";
@@ -34,7 +36,25 @@ import AuditLogList from "../pages/audit-logs/AuditLogList";
 import IntegrationSettings from "../pages/settings/IntegrationSettings";
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
-  const { isAuthenticated } = useAppSelector((state) => state.auth);
+  const { isAuthenticated, token } = useAppSelector((state) => state.auth);
+  const dispatch = useAppDispatch();
+  console.log("000dasd", token);
+  // Check if token is expired
+  if (token) {
+    try {
+      const decoded: any = jwtDecode(token);
+      const currentTime = Date.now() / 1000;
+
+      if (decoded.exp < currentTime) {
+        dispatch(logout());
+        return <Navigate to="/auth/login" replace />;
+      }
+    } catch (error) {
+      // Invalid token
+      dispatch(logout());
+      return <Navigate to="/auth/login" replace />;
+    }
+  }
   if (!isAuthenticated) {
     return <Navigate to="/auth/login" replace />;
   }
@@ -83,12 +103,14 @@ const AppRoutes: React.FC = () => {
         {/* Content */}
         <Route path="content/categories" element={<CategoryList />} />
         <Route path="content/categories/add" element={<AddCategory />} />
+        <Route path="content/categories/edit/:id" element={<AddCategory />} />
         <Route
           path="wallpapers"
           element={<Navigate to="wallpapers/list" replace />}
         />
         <Route path="wallpapers/list" element={<WallpaperListPage />} />
         <Route path="wallpapers/add" element={<AddWallpaperPage />} />
+        <Route path="wallpapers/edit/:id" element={<AddWallpaperPage />} />
 
         {/* Legal & Support */}
         <Route path="legal" element={<LegalDocuments />} />

@@ -67,3 +67,39 @@ body {
   color: rgb(var(--text-primary));
   transition: background-color 300ms, color 300ms;
 }
+
+/* Animations */
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fix for react-country-state-city dark mode visibility */
+.dark .location-selects-wrapper .std-dropdown-container {
+  border-color: #4b5563 !important;
+}
+
+.dark .location-selects-wrapper .std-dropdown-menu {
+  background-color: #1f2937 !important; /* Dark background */
+  border-color: #374151 !important;
+  color: #f3f4f6 !important; /* Light text */
+}
+
+.dark .location-selects-wrapper .std-dropdown-option {
+  color: #f3f4f6 !important;
+}
+
+.dark .location-selects-wrapper .std-dropdown-option:hover,
+.dark .location-selects-wrapper .std-dropdown-option.selected {
+  background-color: #374151 !important;
+}

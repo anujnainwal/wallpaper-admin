@@ -30,7 +30,8 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       // window.location.href = '/login'; // Optional: Redirect to login
     }
-    return Promise.reject(error);
+    const message = error.response?.data?.message || 'Something went wrong';
+    return Promise.reject(message);
   }
 );
 

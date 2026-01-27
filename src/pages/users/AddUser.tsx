@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FaUser,
@@ -7,14 +7,29 @@ import {
   FaShieldAlt,
   FaArrowLeft,
   FaSave,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
+import {
+  CitySelect,
+  CountrySelect,
+  StateSelect,
+} from "react-country-state-city";
+import "react-country-state-city/dist/react-country-state-city.css";
+import { userService } from "../../services/userService";
+import toast from "react-hot-toast";
 
 type UserFormData = {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
-  role: "Admin" | "Editor" | "Viewer";
-  status: "Active" | "Inactive" | "Suspended";
+  countryCode: string;
+  country: string;
+  state: string;
+  city: string;
+  address: string;
+  role: "admin" | "editor" | "viewer" | "user";
+  accountStatus: "Active" | "Inactive" | "Suspended";
   password: string;
   confirmPassword: string;
 };
@@ -25,25 +40,71 @@ const AddUser: React.FC = () => {
   const isEditMode = !!id;
 
   const [formData, setFormData] = useState<UserFormData>({
-    name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
-    role: "Viewer",
-    status: "Active",
+    countryCode: "",
+    country: "",
+    state: "",
+    city: "",
+    address: "",
+    role: "user",
+    accountStatus: "Active",
     password: "",
     confirmPassword: "",
   });
+
+  const [countryid, setCountryid] = useState(0);
+  const [stateid, setStateid] = useState(0);
 
   const [errors, setErrors] = useState<
     Partial<Record<keyof UserFormData, string>>
   >({});
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isEditMode && id) {
+      const fetchUser = async () => {
+        try {
+          const res: any = await userService.getById(id);
+          const data = res.data || res;
+          setFormData({
+            firstName: data.firstName || "",
+            lastName: data.lastName || "",
+            email: data.email || "",
+            phone: data.phoneNumber || "",
+            countryCode: data.countryCode || "",
+            country: data.country || "",
+            state: data.state || "",
+            city: data.city || "",
+            address: data.address || "",
+            role: data.role || "user",
+            accountStatus: data.accountStatus || "Active",
+            password: "",
+            confirmPassword: "",
+          });
+          // Note: Pre-filling the country/state dropdowns from text values might fail purely visually
+          // because the library expects IDs. For now, we load data but dropdowns might reset
+          // if we don't have the original IDs derived from the text.
+          // Ideally backend stores IDs or we reverse lookup (complex).
+        } catch (error) {
+          toast.error("Failed to load user");
+          navigate("/users/list");
+        }
+      };
+      fetchUser();
+    }
+  }, [isEditMode, id, navigate]);
+
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name as keyof UserFormData]) {
       setErrors((prev) => ({ ...prev, [name]: "" }));
     }
@@ -52,18 +113,14 @@ const AddUser: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof UserFormData, string>> = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
-    }
+    if (!formData.firstName.trim())
+      newErrors.firstName = "First Name is required";
+    if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required";
 
     if (!formData.email.trim()) {
       newErrors.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = "Invalid email format";
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = "Phone number is required";
     }
 
     if (!isEditMode) {
@@ -82,18 +139,36 @@ const AddUser: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) return;
 
-    if (validateForm()) {
-      // TODO: Submit to API
-      console.log("Form submitted:", formData);
+    setIsSubmitting(true);
+    try {
+      const payload: any = {
+        ...formData,
+        phoneNumber: formData.phone, // Map phone to phoneNumber for backend
+      };
+      delete payload.confirmPassword;
+      if (!payload.password) delete payload.password;
+
+      if (isEditMode && id) {
+        await userService.update(id, payload);
+        toast.success("User updated successfully");
+      } else {
+        await userService.create(payload);
+        toast.success("User created successfully");
+      }
       navigate("/users/list");
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || "Failed to save user");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="max-w-4xl mx-auto space-y-6 pb-10 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
@@ -108,259 +183,254 @@ const AddUser: React.FC = () => {
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {isEditMode
-              ? "Update user information and permissions"
-              : "Create a new admin user account"}
+              ? "Update user profile and settings"
+              : "Create a new user account"}
           </p>
         </div>
       </div>
 
-      {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Personal Information Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        {/* Personal Info */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
             <FaUser className="text-indigo-600 dark:text-indigo-400" />
             Personal Information
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Full Name */}
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Full Name <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                First Name *
               </label>
               <input
                 type="text"
-                id="name"
-                name="name"
-                value={formData.name}
+                name="firstName"
+                value={formData.firstName}
                 onChange={handleChange}
-                className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100 ${
-                  errors.name
-                    ? "border-red-300 dark:border-red-600"
-                    : "border-gray-200 dark:border-gray-600"
-                }`}
-                placeholder="John Doe"
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                placeholder="John"
               />
-              {errors.name && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                  {errors.name}
-                </p>
+              {errors.firstName && (
+                <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Last Name *
+              </label>
+              <input
+                type="text"
+                name="lastName"
+                value={formData.lastName}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                placeholder="Doe"
+              />
+              {errors.lastName && (
+                <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
               )}
             </div>
 
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Email Address <span className="text-red-500">*</span>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Email Address *
               </label>
               <div className="relative">
-                <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <FaEnvelope className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="email"
-                  id="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100 ${
-                    errors.email
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-200 dark:border-gray-600"
-                  }`}
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
                   placeholder="john@example.com"
                 />
               </div>
               {errors.email && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                  {errors.email}
-                </p>
+                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
               )}
             </div>
 
-            {/* Phone */}
             <div>
-              <label
-                htmlFor="phone"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Phone Number <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Country Code
+              </label>
+              <input
+                type="text"
+                name="countryCode"
+                value={formData.countryCode}
+                onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                placeholder="+1"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Phone Number
               </label>
               <div className="relative">
-                <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <FaPhone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="tel"
-                  id="phone"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className={`w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100 ${
-                    errors.phone
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-200 dark:border-gray-600"
-                  }`}
-                  placeholder="+1 234-567-8900"
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  placeholder="123-456-7890"
                 />
               </div>
-              {errors.phone && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                  {errors.phone}
-                </p>
-              )}
             </div>
           </div>
         </div>
 
-        {/* Role & Permissions Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+        {/* Location Info */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
+            <FaMapMarkerAlt className="text-indigo-600 dark:text-indigo-400" />
+            Location Details
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Country
+              </label>
+              <CountrySelect
+                onChange={(e: any) => {
+                  setCountryid(e.id);
+                  setFormData((prev) => ({ ...prev, country: e.name }));
+                }}
+                placeHolder="Select Country"
+                inputClassName="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                State
+              </label>
+              <StateSelect
+                countryid={countryid}
+                onChange={(e: any) => {
+                  setStateid(e.id);
+                  setFormData((prev) => ({ ...prev, state: e.name }));
+                }}
+                placeHolder="Select State"
+                inputClassName="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                City
+              </label>
+              <CitySelect
+                countryid={countryid}
+                stateid={stateid}
+                onChange={(e: any) => {
+                  setFormData((prev) => ({ ...prev, city: e.name }));
+                }}
+                placeHolder="Select City"
+                inputClassName="bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white rounded-xl"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              Full Address
+            </label>
+            <textarea
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              rows={3}
+              className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+              placeholder="Street Address, Zip Code, etc."
+            />
+          </div>
+        </div>
+
+        {/* Role & Security */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-6 flex items-center gap-2">
             <FaShieldAlt className="text-indigo-600 dark:text-indigo-400" />
-            Role & Permissions
+            Role & Security
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Role */}
             <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                User Role <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Role
               </label>
               <select
-                id="role"
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100"
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
               >
-                <option value="Viewer">Viewer - Read-only access</option>
-                <option value="Editor">Editor - Can create and edit</option>
-                <option value="Admin">Admin - Full access</option>
+                <option value="user">User</option>
+                <option value="viewer">Viewer</option>
+                <option value="editor">Editor</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
-
-            {/* Status */}
             <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-              >
-                Account Status <span className="text-red-500">*</span>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                Status
               </label>
               <select
-                id="status"
-                name="status"
-                value={formData.status}
+                name="accountStatus"
+                value={formData.accountStatus}
                 onChange={handleChange}
-                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100"
+                className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
               >
                 <option value="Active">Active</option>
                 <option value="Inactive">Inactive</option>
                 <option value="Suspended">Suspended</option>
               </select>
             </div>
-          </div>
 
-          {/* Role Description */}
-          <div className="mt-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-xl">
-            <p className="text-xs text-indigo-900 dark:text-indigo-300">
-              {formData.role === "Admin" && (
-                <>
-                  <strong>Admin:</strong> Full system access including user
-                  management, settings, and all content operations.
-                </>
-              )}
-              {formData.role === "Editor" && (
-                <>
-                  <strong>Editor:</strong> Can create, edit, and delete
-                  wallpapers and categories. Cannot manage users or settings.
-                </>
-              )}
-              {formData.role === "Viewer" && (
-                <>
-                  <strong>Viewer:</strong> Read-only access to view analytics
-                  and content. Cannot make any changes.
-                </>
-              )}
-            </p>
+            {!isEditMode && (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Password *
+                  </label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  />
+                  {errors.password && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                    Confirm Password *
+                  </label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.confirmPassword}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Security Card - Only show for new users */}
-        {!isEditMode && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Security
-            </h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100 ${
-                    errors.password
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-200 dark:border-gray-600"
-                  }`}
-                  placeholder="••••••••"
-                />
-                {errors.password && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {errors.password}
-                  </p>
-                )}
-              </div>
-
-              {/* Confirm Password */}
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                >
-                  Confirm Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all dark:text-gray-100 ${
-                    errors.confirmPassword
-                      ? "border-red-300 dark:border-red-600"
-                      : "border-gray-200 dark:border-gray-600"
-                  }`}
-                  placeholder="••••••••"
-                />
-                {errors.confirmPassword && (
-                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                    {errors.confirmPassword}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-4">
+        <div className="flex justify-end gap-3 pt-4">
           <button
             type="button"
             onClick={() => navigate("/users/list")}
@@ -370,10 +440,11 @@ const AddUser: React.FC = () => {
           </button>
           <button
             type="submit"
-            className="px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 transition-colors flex items-center gap-2"
+            disabled={isSubmitting}
+            className="px-6 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg transition-colors flex items-center gap-2"
           >
             <FaSave />
-            {isEditMode ? "Update User" : "Create User"}
+            {isSubmitting ? "Saving..." : "Save User"}
           </button>
         </div>
       </form>

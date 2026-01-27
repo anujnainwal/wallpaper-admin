@@ -18,6 +18,7 @@ import {
 declare module "@tanstack/react-table" {
   interface ColumnMeta<TData, TValue> {
     filterVariant?: "text" | "range" | "select" | "date" | "date-range";
+    filterOptions?: { label: string; value: string }[];
   }
 }
 import {
@@ -49,11 +50,10 @@ interface ReusableTableProps<TData, TValue> {
   title?: string;
   searchPlaceholder?: string;
   onEdit?: (row: TData) => void;
+  onEditPage?: (row: TData) => void;
   onDelete?: (row: TData) => void;
   onView?: (row: TData) => void;
-  // New prop for modal navigation
   basePath?: string;
-  // Controlled State Props (Optional)
   pageCount?: number;
   pagination?: PaginationState;
   onPaginationChange?: OnChangeFn<PaginationState>;
@@ -72,6 +72,7 @@ export function ReusableTable<TData, TValue>({
   data,
   searchPlaceholder = "Search...",
   onEdit,
+  onEditPage,
   onDelete,
   onView,
   // Detailed Destructuring for controlled props
@@ -150,7 +151,7 @@ export function ReusableTable<TData, TValue>({
 
   // Extend columns with Actions if any callback is provided
   const tableColumns = React.useMemo(() => {
-    if (!onEdit && !onDelete && !onView) {
+    if (!onEdit && !onEditPage && !onDelete && !onView) {
       return columns;
     }
 
@@ -171,11 +172,15 @@ export function ReusableTable<TData, TValue>({
               <FaEye size={14} />
             </button>
           )}
-          {onEdit && (
+          {(onEdit || onEditPage) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleAction(row.original, "edit");
+                if (onEditPage) {
+                  onEditPage(row.original);
+                } else {
+                  handleAction(row.original, "edit");
+                }
               }}
               className="p-1.5 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
               title="Edit"
@@ -200,7 +205,7 @@ export function ReusableTable<TData, TValue>({
     };
 
     return [...columns, actionColumn];
-  }, [columns, onEdit, onDelete, onView]);
+  }, [columns, onEdit, onEditPage, onDelete, onView]);
 
   const table = useReactTable({
     data,
@@ -572,11 +577,15 @@ export function ReusableTable<TData, TValue>({
                             <FaEye size={16} />
                           </button>
                         )}
-                        {onEdit && (
+                        {(onEdit || onEditPage) && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleAction(row.original, "edit");
+                              if (onEditPage) {
+                                onEditPage(row.original);
+                              } else {
+                                handleAction(row.original, "edit");
+                              }
                             }}
                             className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
                             title="Edit"
@@ -789,6 +798,21 @@ export function ReusableTable<TData, TValue>({
                       }
                       className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                     />
+                  ) : filterVariant === "select" ? (
+                    <select
+                      value={filterValue as string}
+                      onChange={(e) =>
+                        updateTempFilter(column.id, e.target.value)
+                      }
+                      className="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                    >
+                      <option value="">All</option>
+                      {meta?.filterOptions?.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <input
                       type="text"
@@ -830,6 +854,7 @@ export function ReusableTable<TData, TValue>({
         isOpen={modalType === "view" && !!activeRow}
         onClose={closeModal}
         title="View Details"
+        maxWidth="max-w-4xl"
         footer={
           <div className="flex justify-between items-center w-full bg-gray-50/50 -m-4 p-4 mt-0 border-t border-gray-100 rounded-b-2xl">
             <span className="text-xs text-gray-400 font-medium">
@@ -867,26 +892,108 @@ export function ReusableTable<TData, TValue>({
                   // Value formatting checks
                   let displayValue: React.ReactNode = String(value);
                   const isLongText = String(value).length > 50;
-                  const isId = key.toLowerCase().includes("id");
-                  const isEmail = key.toLowerCase().includes("email");
+                  const keyLower = key.toLowerCase();
+                  const isId = keyLower.includes("id");
+                  const isEmail = keyLower.includes("email");
+                  const isDate =
+                    (keyLower.includes("date") ||
+                      keyLower.endsWith("at") ||
+                      keyLower === "created" ||
+                      keyLower === "updated") &&
+                    !keyLower.includes("format") &&
+                    !keyLower.includes("status") &&
+                    !keyLower.includes("path");
+                  const isImage =
+                    (typeof value === "string" &&
+                      (value.startsWith("http") || value.startsWith("/")) &&
+                      (value.match(/\.(jpeg|jpg|gif|png|webp)$/i) ||
+                        keyLower.includes("image") ||
+                        keyLower.includes("thumbnail") ||
+                        keyLower.includes("avatar"))) ||
+                    (keyLower === "thumbnail" && typeof value === "string");
 
-                  if (typeof value === "object" && value !== null) {
+                  // Handle Image
+                  if (isImage && typeof value === "string") {
                     displayValue = (
-                      <pre className="text-xs bg-gray-50 p-2 rounded-md border border-gray-100 overflow-x-auto">
-                        {JSON.stringify(value, null, 2)}
-                      </pre>
+                      <div className="mt-2 relative group rounded-xl overflow-hidden border border-gray-100 shadow-sm max-w-[200px]">
+                        <img
+                          src={value}
+                          alt={label}
+                          className="w-full h-auto object-cover"
+                        />
+                      </div>
                     );
+                  }
+                  // Handle Arrays (Tags)
+                  else if (Array.isArray(value)) {
+                    if (value.length === 0) {
+                      displayValue = (
+                        <span className="text-gray-400 italic text-xs">
+                          None
+                        </span>
+                      );
+                    } else {
+                      displayValue = (
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {value.map((item, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 text-xs font-medium border border-indigo-100 dark:border-indigo-800"
+                            >
+                              {typeof item === "object"
+                                ? (item as any).name || JSON.stringify(item)
+                                : String(item)}
+                            </span>
+                          ))}
+                        </div>
+                      );
+                    }
+                  }
+                  // Handle Objects (Category, etc)
+                  else if (typeof value === "object" && value !== null) {
+                    const obj = value as any;
+                    // Try to find a display name
+                    const name =
+                      obj.name || obj.title || obj.label || obj.email;
+                    if (name) {
+                      displayValue = (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
+                          <span className="font-semibold text-gray-900 dark:text-white text-sm">
+                            {name}
+                          </span>
+                          {obj._id && (
+                            <span className="text-[10px] text-gray-400 font-mono border-l border-gray-200 dark:border-gray-600 pl-2">
+                              {obj._id}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      displayValue = (
+                        <pre className="text-xs bg-gray-50 dark:bg-gray-900 p-3 rounded-xl border border-gray-100 dark:border-gray-700 overflow-x-auto text-gray-600 dark:text-gray-400 font-mono">
+                          {JSON.stringify(value, null, 2)}
+                        </pre>
+                      );
+                    }
+                  }
+                  // Handle Dates
+                  else if (isDate && typeof value === "string") {
+                    try {
+                      displayValue = new Date(value).toLocaleString();
+                    } catch (e) {
+                      displayValue = value;
+                    }
                   }
 
                   return (
                     <div
                       key={key}
                       className={`
-                        flex flex-col p-3 rounded-xl border border-gray-100 bg-white hover:border-indigo-100 hover:shadow-sm transition-all
-                        ${isLongText || typeof value === "object" ? "sm:col-span-2" : ""}
+                        flex flex-col p-4 rounded-xl border border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-indigo-100 dark:hover:border-indigo-900 hover:shadow-sm transition-all
+                        ${isLongText || typeof value === "object" || isImage ? "sm:col-span-2" : ""}
                       `}
                     >
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                      <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
                         {label}
                         {isId && (
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
@@ -894,9 +1001,9 @@ export function ReusableTable<TData, TValue>({
                       </span>
                       <span
                         className={`
-                          text-sm font-medium text-gray-900 leading-relaxed
-                          ${isEmail ? "text-indigo-600 underline cursor-pointer" : ""}
-                          ${isId ? "font-mono text-gray-600" : ""}
+                          text-sm font-medium text-gray-900 dark:text-gray-200 leading-relaxed break-words
+                          ${isEmail ? "text-indigo-600 dark:text-indigo-400 underline cursor-pointer" : ""}
+                          ${isId ? "font-mono text-gray-500 dark:text-gray-400 text-xs bg-gray-50 dark:bg-gray-900 px-2 py-1 rounded border border-gray-100 dark:border-gray-700 w-fit" : ""}
                         `}
                       >
                         {displayValue}

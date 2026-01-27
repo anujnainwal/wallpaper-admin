@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { FaPlus, FaFolder, FaArrowRight } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import { categoryService } from "../../services/categoryService";
@@ -8,6 +8,7 @@ import { ReusableTable } from "../../components/common/ReusableTable";
 import { type ColumnDef } from "@tanstack/react-table";
 
 const CategoryList: React.FC = () => {
+  const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
@@ -196,10 +197,8 @@ const CategoryList: React.FC = () => {
         loading={loading}
         searchPlaceholder="Search categories..."
         onDelete={handleDelete}
-        onEdit={(row) => {
-          // Handle Edit via navigation or modal
-          // For now just console log or TODO
-          console.log("Edit", row);
+        onEditPage={(row) => {
+          navigate(`/content/categories/edit/${row.id || row._id}`);
         }}
       />
     </div>
