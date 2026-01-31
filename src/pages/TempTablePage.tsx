@@ -137,6 +137,10 @@ const TempTablePage: React.FC = () => {
         onView={(row) => console.log("View", row)}
         onEdit={(row) => console.log("Edit", row)}
         onDelete={(row) => console.log("Delete", row)}
+        onBulkDelete={async (selected) => {
+          console.log("Bulk Delete", selected);
+          alert(`Bulk delete ${selected.length} rows`);
+        }}
       />
     </div>
   );

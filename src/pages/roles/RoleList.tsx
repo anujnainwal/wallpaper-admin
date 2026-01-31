@@ -18,6 +18,7 @@ import {
   countPermissions,
   type ModulePermissions,
 } from "../../constants/permissions";
+import { notifySuccess } from "../../utils/toastUtils";
 
 // Types
 type Role = {
@@ -178,6 +179,14 @@ const RoleList: React.FC = () => {
     }
   };
 
+  const handleBulkDelete = async (selected: Role[]) => {
+    if (window.confirm(`Delete ${selected.length} roles?`)) {
+      const ids = selected.map((r) => r.id);
+      setData((prev) => prev.filter((item) => !ids.includes(item.id)));
+      notifySuccess(`${selected.length} roles deleted`);
+    }
+  };
+
   const columns = useMemo<ColumnDef<Role>[]>(
     () => [
       {
@@ -323,6 +332,7 @@ const RoleList: React.FC = () => {
         data={data}
         columns={columns}
         searchPlaceholder="Search roles by name or description..."
+        onBulkDelete={handleBulkDelete}
       />
 
       {/* Delete Confirmation Modal */}

@@ -66,4 +66,8 @@ export const categoryService = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/categories/${id}`);
   },
+
+  bulkDelete: async (ids: string[]): Promise<void> => {
+    await api.post("/categories/bulk-delete", { ids });
+  },
 };

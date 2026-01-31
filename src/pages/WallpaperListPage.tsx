@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { wallpaperService, type Wallpaper } from "../services/wallpaperService";
 import { categoryService } from "../services/categoryService";
 import toast from "react-hot-toast";
+import { useEventStream } from "../hooks/useEventStream";
 
 const WallpaperListPage: React.FC = () => {
   const navigate = useNavigate();
@@ -69,6 +70,14 @@ const WallpaperListPage: React.FC = () => {
     fetchWallpapers();
   }, [fetchWallpapers]);
 
+  // Real-time updates via SSE
+  useEventStream((event) => {
+    if (event.model === "wallpapers") {
+      console.log("Wallpaper change detected, refreshing...", event.action);
+      fetchWallpapers();
+    }
+  });
+
   const handleDelete = async (id: string) => {
     if (!window.confirm("Are you sure?")) return;
     try {
@@ -78,6 +87,16 @@ const WallpaperListPage: React.FC = () => {
     } catch (error) {
       toast.error("Delete failed");
     }
+  };
+
+  const handleBulkDelete = async (selectedWallpapers: Wallpaper[]) => {
+    const ids = selectedWallpapers
+      .map((w) => w._id)
+      .filter((id): id is string => !!id);
+    if (ids.length === 0) return;
+
+    await wallpaperService.bulkDelete(ids);
+    fetchWallpapers();
   };
 
   const columns = useMemo<ColumnDef<Wallpaper>[]>(
@@ -127,7 +146,7 @@ const WallpaperListPage: React.FC = () => {
       {
         accessorKey: "downloads",
         header: "Stats",
-        cell: (info) => (
+        cell: () => (
           <div className="flex items-center gap-4 text-xs font-medium text-gray-600 dark:text-gray-400">
             <span className="flex items-center gap-1.5" title="Downloads">
               <FaDownload
@@ -259,6 +278,7 @@ const WallpaperListPage: React.FC = () => {
         onView={(row) => console.log("View", row)}
         onEditPage={(row) => navigate(`/wallpapers/edit/${row._id}`)}
         onDelete={(row) => handleDelete(row._id!)}
+        onBulkDelete={handleBulkDelete}
         basePath="/wallpapers"
         renderGridItem={(row) => {
           const wallpaper = row.original;

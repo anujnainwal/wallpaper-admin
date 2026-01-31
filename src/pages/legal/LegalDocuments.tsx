@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaSave,
   FaBold,
@@ -10,70 +10,75 @@ import {
   FaCheckCircle,
   FaTimesCircle,
 } from "react-icons/fa";
+import { toast } from "react-hot-toast";
+import {
+  legalDocumentService,
+  type LegalDocument,
+} from "../../services/legalDocumentService";
 
 type DocumentType = "terms" | "privacy" | "disclaimer" | "eula";
 
-interface DocumentData {
-  title: string;
-  slug: string;
-  version: string;
-  content: string;
-  effectiveDate: string;
-  status: "published" | "draft";
-}
-
-const initialData: Record<DocumentType, DocumentData> = {
-  terms: {
-    title: "Terms and Conditions",
-    slug: "terms-and-conditions",
-    version: "1.0",
-    content: "Welcome to our application...",
-    effectiveDate: "2024-01-01",
-    status: "published",
-  },
-  privacy: {
-    title: "Privacy Policy",
-    slug: "privacy-policy",
-    version: "1.0",
-    content: "Your privacy is important to us...",
-    effectiveDate: "2024-01-01",
-    status: "published",
-  },
-  disclaimer: {
-    title: "Disclaimer",
-    slug: "disclaimer",
-    version: "0.9",
-    content: "The information provided...",
-    effectiveDate: "2024-01-01",
-    status: "draft",
-  },
-  eula: {
-    title: "End User License Agreement",
-    slug: "eula",
-    version: "0.1",
-    content: "By installing this application...",
-    effectiveDate: "2024-01-01",
-    status: "draft",
-  },
-};
-
 const LegalDocuments: React.FC = () => {
   const [activeTab, setActiveTab] = useState<DocumentType>("terms");
-  const [documents, setDocuments] =
-    useState<Record<DocumentType, DocumentData>>(initialData);
+  const [documents, setDocuments] = useState<Record<string, LegalDocument>>({});
+  const [loading, setLoading] = useState(false);
 
   // We need a ref to the contentEditable element to update its content when switching tabs
-  // and to avoid cursor jumping issues if we were fully controlled (though here we use a hybrid approach)
   const editorRef = React.useRef<HTMLDivElement>(null);
 
-  // Update editor content when active tab changes
-  React.useEffect(() => {
-    if (editorRef.current) {
-      editorRef.current.innerHTML = documents[activeTab].content;
-    }
-  }, [activeTab]); // Intentionally not including documents to avoid re-render loops on content edit
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
-  const handleUpdate = (field: keyof DocumentData, value: string) => {
+  const fetchDocuments = async () => {
+    try {
+      setLoading(true);
+      const response = await legalDocumentService.getAll();
+      const docsMap: Record<string, LegalDocument> = {};
+
+      // Robust handling for potential backend wrapper variations
+      let fetchedDocs: LegalDocument[] = [];
+      if (Array.isArray(response.data)) {
+        fetchedDocs = response.data;
+      } else if (response.data && Array.isArray(response.data.data)) {
+        fetchedDocs = response.data.data;
+      }
+
+      // Initialize with defaults if missing
+      const types: DocumentType[] = ["terms", "privacy", "disclaimer", "eula"];
+      types.forEach((type) => {
+        const found = fetchedDocs.find((d) => d.type === type);
+        docsMap[type] = found || {
+          title:
+            type === "terms"
+              ? "Terms & Conditions"
+              : type.charAt(0).toUpperCase() + type.slice(1),
+          slug: type,
+          type: type,
+          version: "1.0",
+          content: "",
+          effectiveDate: new Date().toISOString().split("T")[0],
+          status: "draft",
+        };
+      });
+
+      setDocuments(docsMap);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch documents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update editor content when active tab changes
+  useEffect(() => {
+    if (editorRef.current && documents[activeTab]) {
+      editorRef.current.innerHTML = documents[activeTab].content || "";
+    }
+  }, [activeTab, documents]);
+
+  const handleUpdate = (field: keyof LegalDocument, value: string) => {
     setDocuments((prev) => ({
       ...prev,
       [activeTab]: {
@@ -98,15 +103,38 @@ const LegalDocuments: React.FC = () => {
     }
   };
 
+  const handleSave = async () => {
+    try {
+      const doc = documents[activeTab];
+      if (doc._id || doc.id) {
+        // Handle both _id (mongoose) and id (if transformed)
+        const id = doc._id || doc.id;
+        await legalDocumentService.update(id!, doc);
+        toast.success("Document updated successfully");
+      } else {
+        const newDoc = await legalDocumentService.create(doc);
+        setDocuments((prev) => ({
+          ...prev,
+          [activeTab]: newDoc.data,
+        }));
+        toast.success("Document created successfully");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save document");
+    }
+  };
+
   const handlePreview = () => {
     try {
+      const doc = documents[activeTab];
       // Create a temporary blob to exhibit the HTML content properly
       const blob = new Blob(
         [
           `
         <html>
           <head>
-            <title>${documents[activeTab].title} - Preview</title>
+            <title>${doc.title} - Preview</title>
             <style>
               body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
               h1 { border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
@@ -116,11 +144,11 @@ const LegalDocuments: React.FC = () => {
           </head>
           <body>
             <div style="margin-bottom: 2rem; color: #666; font-size: 0.9em; border-bottom: 1px solid #eee; padding-bottom: 1rem;">
-              <strong>Slug:</strong> /${documents[activeTab].slug} <br/>
-              <strong>Version:</strong> ${documents[activeTab].version} <br/>
-              <strong>Date:</strong> ${documents[activeTab].effectiveDate}
+              <strong>Slug:</strong> /${doc.slug} <br/>
+              <strong>Version:</strong> ${doc.version} <br/>
+              <strong>Date:</strong> ${doc.effectiveDate}
             </div>
-            ${documents[activeTab].content}
+            ${doc.content}
           </body>
         </html>
         `,
@@ -136,6 +164,14 @@ const LegalDocuments: React.FC = () => {
   };
 
   const currentDoc = documents[activeTab];
+
+  if (loading || !currentDoc) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -154,7 +190,10 @@ const LegalDocuments: React.FC = () => {
             <FaEye />
             <span>Preview</span>
           </button>
-          <button className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200">
+          <button
+            onClick={handleSave}
+            className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm shadow-indigo-200"
+          >
             <FaSave />
             <span>Save Changes</span>
           </button>
@@ -382,7 +421,11 @@ const LegalDocuments: React.FC = () => {
               </label>
               <input
                 type="date"
-                value={currentDoc.effectiveDate}
+                value={
+                  currentDoc.effectiveDate
+                    ? currentDoc.effectiveDate.split("T")[0]
+                    : ""
+                }
                 onChange={(e) => handleUpdate("effectiveDate", e.target.value)}
                 className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
               />
@@ -391,7 +434,10 @@ const LegalDocuments: React.FC = () => {
             <div className="pt-4 border-t border-gray-100">
               <div className="text-xs text-gray-500 space-y-2">
                 <p>
-                  <span className="font-semibold">Last Modified:</span> Just now
+                  <span className="font-semibold">Last Modified:</span>{" "}
+                  {currentDoc.updatedAt
+                    ? new Date(currentDoc.updatedAt).toLocaleDateString()
+                    : "New"}
                 </p>
                 <p>
                   <span className="font-semibold">Modified By:</span> Admin User

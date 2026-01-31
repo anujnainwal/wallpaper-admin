@@ -45,4 +45,9 @@ export const wallpaperService = {
     const response = await api.delete(`/wallpapers/${id}`);
     return response.data;
   },
+
+  bulkDelete: async (ids: string[]) => {
+    const response = await api.post("/wallpapers/bulk-delete", { ids });
+    return response.data;
+  },
 };

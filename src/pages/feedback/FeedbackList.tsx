@@ -14,6 +14,7 @@ import {
   FaReply,
   FaEye,
 } from "react-icons/fa";
+import { notifySuccess } from "../../utils/toastUtils";
 
 // Types
 type FeedbackType =
@@ -171,6 +172,14 @@ const FeedbackList: React.FC = () => {
       setReplyModalOpen(false);
       setReplyText("");
       setSelectedFeedback(null);
+    }
+  };
+
+  const handleBulkDelete = async (selected: Feedback[]) => {
+    if (window.confirm(`Delete ${selected.length} feedbacks?`)) {
+      const ids = selected.map((f) => f.id);
+      setData((prev) => prev.filter((item) => !ids.includes(item.id)));
+      notifySuccess(`${selected.length} feedbacks deleted`);
     }
   };
 
@@ -335,6 +344,7 @@ const FeedbackList: React.FC = () => {
         data={data}
         columns={columns}
         searchPlaceholder="Search feedback by subject or user..."
+        onBulkDelete={handleBulkDelete}
       />
 
       {/* View Feedback Modal */}

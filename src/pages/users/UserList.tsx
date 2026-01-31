@@ -15,13 +15,13 @@ import {
   FaBan,
   FaEdit,
   FaTrash,
-  FaShieldAlt,
   FaCrown,
   FaUserTie,
   FaMapMarkerAlt,
 } from "react-icons/fa";
 import { userService, type User } from "../../services/userService";
 import toast from "react-hot-toast";
+import { useEventStream } from "../../hooks/useEventStream";
 
 const UserList: React.FC = () => {
   const navigate = useNavigate();
@@ -88,6 +88,14 @@ const UserList: React.FC = () => {
     return () => clearTimeout(timer);
   }, [fetchData]);
 
+  // Real-time updates via SSE
+  useEventStream((event) => {
+    if (event.model === "users") {
+      console.log("User change detected, refreshing...", event.action);
+      fetchData();
+    }
+  });
+
   const handleDeleteClick = (user: User) => {
     setItemToDelete(user);
     setDeleteModalOpen(true);
@@ -110,6 +118,19 @@ const UserList: React.FC = () => {
         setItemToDelete(null);
       }
     }
+  };
+
+  const handleBulkDelete = async (selectedUsers: User[]) => {
+    const ids = selectedUsers
+      .map((u) => u._id)
+      .filter((id): id is string => !!id);
+    if (ids.length === 0) return;
+
+    await userService.bulkDelete(ids);
+    // fetchData() is called by the SSE hook automatically if we want,
+    // but ReusableTable handles the success toast.
+    // Let's explicitly refresh just in case SSE is slow.
+    fetchData();
   };
 
   const getRoleIcon = (role: string) => {
@@ -288,6 +309,7 @@ const UserList: React.FC = () => {
         globalFilter={globalFilter}
         onGlobalFilterChange={setGlobalFilter}
         onEditPage={(row) => handleEditClick(row)}
+        onBulkDelete={handleBulkDelete}
       />
 
       {/* Delete Confirmation Modal */}

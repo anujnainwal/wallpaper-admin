@@ -1,178 +1,102 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ReusableTable } from "../../components/common/ReusableTable";
 import Modal from "../../components/common/Modal";
 import {
-  FaAndroid,
-  FaApple,
   FaGlobe,
   FaCheckCircle,
   FaClock,
   FaTrash,
+  FaExclamationCircle,
 } from "react-icons/fa";
-
-// Types
-type Notification = {
-  id: number;
-  title: string;
-  message: string;
-  target: "all" | "android" | "ios" | "custom";
-  sentAt: string;
-  status: "Sent" | "Scheduled" | "Draft";
-  opens: number;
-};
-
-// Mock Data Generator
-const generateData = (): Notification[] => {
-  const baseData: Notification[] = [
-    {
-      id: 1,
-      title: "New Summer Collection",
-      message: "Check out our 50+ new nature wallpapers!",
-      target: "all",
-      sentAt: "2024-01-15",
-      status: "Sent",
-      opens: 1240,
-    },
-    {
-      id: 2,
-      title: "Update Required",
-      message: "Please update to the latest version.",
-      target: "android",
-      sentAt: "2024-01-14",
-      status: "Sent",
-      opens: 856,
-    },
-    {
-      id: 3,
-      title: "Exclusive Pro Features",
-      message: "Unlock 4K downloads now!",
-      target: "ios",
-      sentAt: "2024-01-20",
-      status: "Scheduled",
-      opens: 0,
-    },
-    {
-      id: 4,
-      title: "Welcome New Users",
-      message: "Thanks for joining us!",
-      target: "custom",
-      sentAt: "2024-01-12",
-      status: "Sent",
-      opens: 45,
-    },
-    {
-      id: 5,
-      title: "Weekend Sale",
-      message: "50% off on Pro subscription",
-      target: "all",
-      sentAt: "2024-01-10",
-      status: "Sent",
-      opens: 2100,
-    },
-    {
-      id: 6,
-      title: "System Maintenance",
-      message: "We will be down for 1 hour.",
-      target: "all",
-      sentAt: "2024-01-08",
-      status: "Sent",
-      opens: 3200,
-    },
-    {
-      id: 7,
-      title: "New Abstract Pack",
-      message: "Abstract lovers, this is for you.",
-      target: "ios",
-      sentAt: "2024-01-18",
-      status: "Draft",
-      opens: 0,
-    },
-    {
-      id: 8,
-      title: "Rate Us",
-      message: "Loving the app? Rate us on Play Store!",
-      target: "android",
-      sentAt: "2024-01-05",
-      status: "Sent",
-      opens: 150,
-    },
-    {
-      id: 9,
-      title: "Dark Mode Added",
-      message: "Try the new Dark Mode in settings.",
-      target: "all",
-      sentAt: "2024-01-01",
-      status: "Sent",
-      opens: 4500,
-    },
-    {
-      id: 10,
-      title: "Referral Bonus",
-      message: "Invite friends and earn rewards.",
-      target: "custom",
-      sentAt: "2024-01-16",
-      status: "Sent",
-      opens: 120,
-    },
-    {
-      id: 11,
-      title: "Bug Fixes",
-      message: "Crash fixes for Android 14.",
-      target: "android",
-      sentAt: "2024-01-19",
-      status: "Sent",
-      opens: 900,
-    },
-    {
-      id: 12,
-      title: "Happy New Year",
-      message: "Best wishes from the team!",
-      target: "all",
-      sentAt: "2024-01-01",
-      status: "Sent",
-      opens: 5000,
-    },
-  ];
-
-  // Generate more mock data for pagination testing
-  const moreData = Array.from({ length: 88 }).map((_, i) => ({
-    id: 13 + i,
-    title: `Campaign #${13 + i}`,
-    message: "Auto-generated test notification message.",
-    target: (["all", "android", "ios", "custom"] as const)[
-      Math.floor(Math.random() * 4)
-    ],
-    sentAt: "2024-01-01",
-    status: (["Sent", "Scheduled", "Draft"] as const)[
-      Math.floor(Math.random() * 3)
-    ],
-    opens: Math.floor(Math.random() * 1000),
-  }));
-
-  return [...baseData, ...moreData];
-};
+import {
+  getNotifications,
+  deleteNotification,
+  bulkDeleteNotifications,
+  type Notification,
+} from "../../services/notificationService";
+import { notifyError, notifySuccess } from "../../utils/toastUtils";
+import { useEventStream } from "../../hooks/useEventStream";
 
 const NotificationList: React.FC = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState(() => generateData());
+  const [data, setData] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Pagination State
+  const [pageCount, setPageCount] = useState(0);
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
 
   // Delete Modal State
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<Notification | null>(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const result = await getNotifications({
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+      });
+      // The service now returns the unwrapped data object { data: [], meta: {} }
+      if (result && Array.isArray(result.data)) {
+        setData(result.data);
+        setPageCount(result.meta?.totalPages || 1);
+      } else {
+        setData([]);
+        setPageCount(0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+      notifyError("Failed to load notifications");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [pagination]);
+
+  // Real-time updates via SSE
+  useEventStream((event) => {
+    if (event.model === "notifications") {
+      console.log("Notification change detected, refreshing...", event.action);
+      fetchData();
+    }
+  });
 
   const handleDeleteClick = (notification: Notification) => {
     setItemToDelete(notification);
     setDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (itemToDelete) {
-      setData((prev) => prev.filter((item) => item.id !== itemToDelete.id));
-      setDeleteModalOpen(false);
-      setItemToDelete(null);
+      try {
+        await deleteNotification(itemToDelete._id);
+        notifySuccess("Notification deleted");
+        fetchData();
+        setDeleteModalOpen(false);
+        setItemToDelete(null);
+      } catch (error) {
+        notifyError("Failed to delete notification");
+      }
     }
+  };
+
+  const handleBulkDelete = async (selectedNotifications: Notification[]) => {
+    const ids = selectedNotifications
+      .map((n) => n._id)
+      .filter((id): id is string => !!id);
+    if (ids.length === 0) return;
+
+    await bulkDeleteNotifications(ids);
+    fetchData();
   };
 
   const columns = useMemo<ColumnDef<Notification>[]>(
@@ -186,7 +110,7 @@ const NotificationList: React.FC = () => {
               {getValue() as string}
             </span>
             <span className="text-gray-500 dark:text-gray-400 text-xs truncate max-w-xs">
-              {row.original.message}
+              {row.original.body}
             </span>
           </div>
         ),
@@ -195,45 +119,61 @@ const NotificationList: React.FC = () => {
         accessorKey: "target",
         header: "Target",
         cell: ({ getValue }) => {
-          const target = getValue() as string;
+          const targetObj = getValue() as any; // { type, value }
+          const type = targetObj?.type || "all";
+
           return (
             <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
-              {target === "all" && (
+              {type === "all" && (
                 <>
                   <FaGlobe className="text-indigo-500 dark:text-indigo-400" />
                   <span className="text-sm">All</span>
                 </>
               )}
-              {target === "android" && (
+              {type === "topic" && (
                 <>
-                  <FaAndroid className="text-green-500 dark:text-green-400" />
-                  <span className="text-sm">Android</span>
+                  <span className="text-xs bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded">
+                    Topic
+                  </span>
+                  <span className="text-sm">{targetObj.value}</span>
                 </>
               )}
-              {target === "ios" && (
+              {type === "tokens" && (
                 <>
-                  <FaApple className="text-gray-900 dark:text-gray-100" />
-                  <span className="text-sm">iOS</span>
+                  <span className="text-xs bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded">
+                    Devices
+                  </span>
+                  <span className="text-sm">
+                    {Array.isArray(targetObj.value)
+                      ? targetObj.value.length
+                      : 1}
+                  </span>
                 </>
               )}
-              {target === "custom" && (
+              {type === "users" && (
                 <span className="text-sm bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
-                  Custom
+                  Users
                 </span>
               )}
             </div>
           );
         },
-        filterFn: "equals",
       },
       {
-        accessorKey: "sentAt",
+        accessorKey: "createdAt",
         header: "Date",
-        cell: ({ getValue }) => (
-          <span className="text-sm text-gray-600 dark:text-gray-300">
-            {getValue() as string}
-          </span>
-        ),
+        cell: ({ getValue }) => {
+          const date = new Date(getValue() as string);
+          return (
+            <span className="text-xs text-gray-600 dark:text-gray-300">
+              {date.toLocaleDateString()}{" "}
+              {date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "status",
@@ -243,38 +183,24 @@ const NotificationList: React.FC = () => {
           return (
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                status === "Sent"
+                status === "sent"
                   ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
-                  : status === "Scheduled"
-                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                    : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
+                  : status === "queued" || status === "sending"
+                    ? "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-400"
+                    : status === "failed"
+                      ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                      : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
               }`}
             >
-              {status === "Sent" ? (
+              {status === "sent" ? (
                 <FaCheckCircle className="mr-1" size={10} />
+              ) : status === "failed" ? (
+                <FaExclamationCircle className="mr-1" size={10} />
               ) : (
                 <FaClock className="mr-1" size={10} />
               )}
-              {status}
+              <span className="capitalize">{status}</span>
             </span>
-          );
-        },
-        filterFn: "equals",
-      },
-      {
-        accessorKey: "opens",
-        header: "Engagement",
-        cell: ({ getValue }) => {
-          const opens = getValue() as number;
-          return opens > 0 ? (
-            <span className="font-medium text-gray-900 dark:text-gray-100">
-              {opens}{" "}
-              <span className="text-gray-400 dark:text-gray-500 font-normal">
-                opens
-              </span>
-            </span>
-          ) : (
-            <span className="text-gray-400 dark:text-gray-500">-</span>
           );
         },
       },
@@ -318,7 +244,13 @@ const NotificationList: React.FC = () => {
       <ReusableTable
         data={data}
         columns={columns}
+        loading={loading}
+        pagination={pagination}
+        pageCount={pageCount}
+        onPaginationChange={setPagination}
         searchPlaceholder="Search notifications..."
+        title="Notification History"
+        onBulkDelete={handleBulkDelete}
       />
 
       {/* Delete Confirmation Modal */}
@@ -354,7 +286,7 @@ const NotificationList: React.FC = () => {
                 {itemToDelete.title}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {itemToDelete.message}
+                {itemToDelete.body}
               </p>
             </div>
           )}

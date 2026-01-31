@@ -10,7 +10,13 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    let token = null;
+    try {
+      token = localStorage.getItem('token');
+    } catch (e) {
+      console.warn('LocalStorage access denied', e);
+    }
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -27,7 +33,11 @@ api.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized globally
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
+      try {
+        localStorage.removeItem('token');
+      } catch (e) {
+        // Ignore storage errors
+      }
       // window.location.href = '/login'; // Optional: Redirect to login
     }
     const message = error.response?.data?.message || 'Something went wrong';

@@ -213,6 +213,16 @@ const AppUserList: React.FC = () => {
     }
   };
 
+  const handleBulkDelete = async (selected: AppUser[]) => {
+    if (window.confirm(`Delete ${selected.length} users?`)) {
+      console.log(
+        "Bulk deleting:",
+        selected.map((u) => u.id),
+      );
+      // In a real app, call service and then fetchData()
+    }
+  };
+
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case "Android":
@@ -396,6 +406,7 @@ const AppUserList: React.FC = () => {
         data={data}
         columns={columns}
         searchPlaceholder="Search users by name, email, or phone..."
+        onBulkDelete={handleBulkDelete}
         renderGridItem={(row: Row<AppUser>) => {
           const user = row.original;
           return (

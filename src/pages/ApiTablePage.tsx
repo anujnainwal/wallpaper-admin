@@ -128,6 +128,11 @@ const ApiTablePage: React.FC = () => {
         onDelete={(row) => {
           setData((prev) => prev.filter((r) => r.id !== row.id));
         }}
+        onBulkDelete={async (selected) => {
+          const ids = selected.map((r) => r.id);
+          setData((prev) => prev.filter((r) => !ids.includes(r.id)));
+          console.log("Bulk Delete API Examples", ids);
+        }}
       />
     </div>
   );

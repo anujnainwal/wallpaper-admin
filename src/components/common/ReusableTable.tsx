@@ -63,6 +63,9 @@ interface ReusableTableProps<TData, TValue> {
   onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>;
   globalFilter?: string;
   onGlobalFilterChange?: OnChangeFn<string>;
+  onSelectionChange?: (selectedRows: TData[]) => void;
+  onBulkDelete?: (selectedRows: TData[]) => Promise<void>;
+  resetSelectionSignal?: number | string;
   loading?: boolean;
   renderGridItem?: (row: Row<TData>) => React.ReactNode;
 }
@@ -86,22 +89,57 @@ export function ReusableTable<TData, TValue>({
   globalFilter: controlledGlobalFilter,
   onGlobalFilterChange,
   loading = false,
+  onSelectionChange,
+  onBulkDelete,
+  resetSelectionSignal,
   basePath,
   renderGridItem,
+  title,
 }: ReusableTableProps<TData, TValue>) {
   // Local state fallback if not controlled
   const [internalGlobalFilter, setInternalGlobalFilter] = useState("");
   const [internalSorting, setInternalSorting] = useState<SortingState>([]);
   const [internalColumnFilters, setInternalColumnFilters] =
     useState<ColumnFiltersState>([]);
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+  // Persistence Key
+  const storageKey = `table_view_mode_${title ? title.replace(/\s+/g, "_").toLowerCase() : "global"}`;
+
+  const [viewMode, setViewMode] = useState<"list" | "grid">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        return saved === "list" || saved === "grid" ? saved : "list";
+      } catch (e) {
+        return "list";
+      }
+    }
+    return "list";
+  });
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, viewMode);
+    } catch (e) {
+      /* ignore */
+    }
+  }, [viewMode, storageKey]);
+
+  const [rowSelection, setRowSelection] = useState({});
+
+  // Reset selection when signal changes
+  React.useEffect(() => {
+    if (resetSelectionSignal !== undefined) {
+      setRowSelection({});
+    }
+  }, [resetSelectionSignal]);
 
   // Modal State
   const [activeRow, setActiveRow] = useState<TData | null>(null);
-  const [modalType, setModalType] = useState<"view" | "edit" | "delete" | null>(
-    null,
-  );
+  const [modalType, setModalType] = useState<
+    "view" | "edit" | "delete" | "bulk_delete" | null
+  >(null);
   const [formData, setFormData] = useState<TData | null>(null);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   React.useEffect(() => {
     if (activeRow && modalType === "edit") {
@@ -149,10 +187,45 @@ export function ReusableTable<TData, TValue>({
   const isManualFiltering =
     !!controlledColumnFilters || !!controlledGlobalFilter;
 
-  // Extend columns with Actions if any callback is provided
+  // Extend columns with Selection if enabled
   const tableColumns = React.useMemo(() => {
+    let finalCols = columns;
+
+    // Add Selection Column
+    if (onSelectionChange || onBulkDelete) {
+      const selectCol: ColumnDef<TData, TValue> = {
+        id: "select",
+        header: ({ table }) => (
+          <div className="px-1">
+            <input
+              type="checkbox"
+              checked={table.getIsAllPageRowsSelected()}
+              ref={(input) => {
+                if (input)
+                  input.indeterminate = table.getIsSomePageRowsSelected();
+              }}
+              onChange={table.getToggleAllPageRowsSelectedHandler()}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            />
+          </div>
+        ),
+        cell: ({ row }) => (
+          <div className="px-1">
+            <input
+              type="checkbox"
+              checked={row.getIsSelected()}
+              disabled={!row.getCanSelect()}
+              onChange={row.getToggleSelectedHandler()}
+              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+            />
+          </div>
+        ),
+      };
+      finalCols = [selectCol, ...finalCols];
+    }
+
     if (!onEdit && !onEditPage && !onDelete && !onView) {
-      return columns;
+      return finalCols;
     }
 
     const actionColumn: ColumnDef<TData, TValue> = {
@@ -204,8 +277,8 @@ export function ReusableTable<TData, TValue>({
       ),
     };
 
-    return [...columns, actionColumn];
-  }, [columns, onEdit, onEditPage, onDelete, onView]);
+    return [...finalCols, actionColumn];
+  }, [columns, onEdit, onEditPage, onDelete, onView, onSelectionChange]);
 
   const table = useReactTable({
     data,
@@ -214,6 +287,7 @@ export function ReusableTable<TData, TValue>({
     state: {
       globalFilter,
       sorting,
+      rowSelection,
       columnFilters: tableColumnFilters,
       ...(controlledPagination ? { pagination: controlledPagination } : {}),
     },
@@ -221,12 +295,15 @@ export function ReusableTable<TData, TValue>({
     onGlobalFilterChange: onGlobalFilterChange ?? setInternalGlobalFilter,
     onSortingChange: onSortingChange ?? setInternalSorting,
     onColumnFiltersChange: onColumnFiltersChange ?? setInternalColumnFilters,
-    onPaginationChange: onPaginationChange, // Only used if using manual pagination usually
+    onPaginationChange: onPaginationChange,
+    onRowSelectionChange: setRowSelection,
+    getRowId: (row) => getRowId(row), // Use the getRowId helper
 
     // Manual Flags
     manualPagination: isManualPagination,
     manualSorting: isManualSorting,
     manualFiltering: isManualFiltering,
+    enableRowSelection: true,
 
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -238,6 +315,16 @@ export function ReusableTable<TData, TValue>({
       },
     },
   });
+
+  // Notify parent of selection changes
+  React.useEffect(() => {
+    if (onSelectionChange) {
+      const selected = table
+        .getSelectedRowModel()
+        .rows.map((row) => row.original);
+      onSelectionChange(selected);
+    }
+  }, [rowSelection, onSelectionChange, table]);
 
   const handleApplyFilters = () => {
     if (onColumnFiltersChange) {
@@ -274,6 +361,26 @@ export function ReusableTable<TData, TValue>({
     });
   };
 
+  const handleBulkDelete = async () => {
+    if (!onBulkDelete) return;
+    const selected = table.getSelectedRowModel().rows.map((r) => r.original);
+    if (selected.length === 0) return;
+
+    setIsBulkDeleting(true);
+    try {
+      await onBulkDelete(selected);
+      setRowSelection({}); // Clear selection after delete
+      notifySuccess(`${selected.length} items deleted successfully`);
+    } catch (e) {
+      // Error handled by parent service/toast
+    } finally {
+      setIsBulkDeleting(false);
+      setModalType(null);
+    }
+  };
+
+  const selectedCount = table.getSelectedRowModel().rows.length;
+
   return (
     <div className="relative">
       {/* Loading Overlay */}
@@ -283,6 +390,32 @@ export function ReusableTable<TData, TValue>({
         </div>
       )}
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        {/* Bulk Action Toolbar */}
+        {selectedCount > 0 && onBulkDelete && (
+          <div className="bg-indigo-50 dark:bg-indigo-900/20 px-6 py-3 border-b border-indigo-100 dark:border-indigo-900/30 flex items-center justify-between animate-in slide-in-from-top duration-300">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-indigo-700 dark:text-indigo-300">
+                {selectedCount} item{selectedCount > 1 ? "s" : ""} selected
+              </span>
+              <div className="h-4 w-px bg-indigo-200 dark:bg-indigo-800" />
+              <button
+                onClick={() => setRowSelection({})}
+                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200"
+              >
+                Deselect all
+              </button>
+            </div>
+
+            <button
+              onClick={() => setModalType("bulk_delete")}
+              className="flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-red-700 transition shadow-sm active:scale-95"
+            >
+              <FaTrash size={12} />
+              Delete Selected
+            </button>
+          </div>
+        )}
+
         {/* Toolbar */}
         <div className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
@@ -459,152 +592,165 @@ export function ReusableTable<TData, TValue>({
                   return (
                     <div
                       key={row.id}
-                      className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-indigo-100 dark:hover:border-indigo-900 transition-all duration-200 flex flex-col overflow-hidden"
+                      className="group relative bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-lg hover:border-indigo-100 dark:hover:border-indigo-900 transition-all duration-300 flex flex-col overflow-hidden"
                     >
-                      {/* Card Header - First Column usually ID or Name */}
-                      <div className="p-5 border-b border-gray-50 dark:border-gray-700 flex justify-between items-start gap-3 bg-gray-50/30 dark:bg-gray-700/30">
-                        <div className="flex-1 min-w-0">
-                          {/* Render the first non-action column as title */}
-                          {(() => {
-                            const titleCell = row
-                              .getVisibleCells()
-                              .find(
-                                (cell) =>
-                                  cell.column.id !== "actions" &&
-                                  cell.column.id !== "select",
+                      {/* Selection Checkbox (Absolute) */}
+                      {onSelectionChange && (
+                        <div className="absolute top-4 right-4 z-10">
+                          <input
+                            type="checkbox"
+                            checked={row.getIsSelected()}
+                            onChange={row.getToggleSelectedHandler()}
+                            className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shadow-sm"
+                          />
+                        </div>
+                      )}
+
+                      {/* Card Header */}
+                      <div className="p-5 border-b border-gray-50 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30">
+                        <div className="flex justify-between items-start gap-3 pr-8">
+                          <div className="flex-1 min-w-0 space-y-1">
+                            {/* Primary Title */}
+                            {(() => {
+                              const titleCell = row
+                                .getVisibleCells()
+                                .find(
+                                  (cell) =>
+                                    cell.column.id !== "actions" &&
+                                    cell.column.id !== "select",
+                                );
+                              return titleCell ? (
+                                <div className="text-base font-bold text-gray-900 dark:text-white truncate">
+                                  {flexRender(
+                                    titleCell.column.columnDef.cell,
+                                    titleCell.getContext(),
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">
+                                  Item #{row.index + 1}
+                                </span>
                               );
-                            return titleCell ? (
-                              <div className="font-semibold text-gray-900 dark:text-gray-100 truncate text-base">
-                                {flexRender(
-                                  titleCell.column.columnDef.cell,
-                                  titleCell.getContext(),
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-gray-400 italic">
-                                Item #{row.index + 1}
-                              </span>
-                            );
-                          })()}
-                          {/* Try to find a secondary subtitle like email or date if available */}
-                          {(() => {
-                            const subtitleCell = row
-                              .getVisibleCells()
-                              .find(
-                                (cell) =>
-                                  cell.column.id !== "actions" &&
-                                  cell.column.id !== "select" &&
-                                  (cell.column.id
-                                    .toLowerCase()
-                                    .includes("email") ||
-                                    cell.column.id
-                                      .toLowerCase()
-                                      .includes("date") ||
-                                    cell.column.id
-                                      .toLowerCase()
-                                      .includes("role")),
+                            })()}
+
+                            {/* Secondary Subtitle (e.g. ID or User) */}
+                            {(() => {
+                              // Try finding a second important column (e.g. user, ID if not title)
+                              const subtitleCell = row.getVisibleCells().find(
+                                (c) =>
+                                  c.column.id !== "actions" &&
+                                  c.column.id !== "select" &&
+                                  c.column.id !==
+                                    row.getVisibleCells()[0].column.id && // not title
+                                  (c.column.id.toLowerCase().includes("user") ||
+                                    c.column.id.toLowerCase().includes("id")),
                               );
-                            return subtitleCell ? (
-                              <div className="text-xs text-gray-500 mt-1 truncate">
-                                {flexRender(
-                                  subtitleCell.column.columnDef.cell,
-                                  subtitleCell.getContext(),
-                                )}
-                              </div>
-                            ) : null;
-                          })()}
+
+                              if (!subtitleCell) return null;
+
+                              return (
+                                <div className="text-xs text-gray-500 font-mono truncate opacity-70">
+                                  {flexRender(
+                                    subtitleCell.column.columnDef.cell,
+                                    subtitleCell.getContext(),
+                                  )}
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Card Body - Other Columns */}
-                      <div className="p-5 flex-1 space-y-3">
-                        {row.getVisibleCells().map((cell) => {
-                          if (
-                            cell.column.id === "actions" ||
-                            cell.column.id === "select"
-                          )
-                            return null;
-                          // Skip the title cell we already showed
-                          const titleCellId = row
-                            .getVisibleCells()
-                            .find(
-                              (c) =>
-                                c.column.id !== "actions" &&
-                                c.column.id !== "select",
-                            )?.column.id;
-                          if (cell.column.id === titleCellId) return null;
+                      {/* Card Body */}
+                      <div className="p-5 flex-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {row.getVisibleCells().map((cell) => {
+                            // Filter out excluded columns from body
+                            if (["actions", "select"].includes(cell.column.id))
+                              return null;
 
-                          // Skip the subtitle cell if we showed one
-                          const subtitleCellId = row
-                            .getVisibleCells()
-                            .find(
-                              (c) =>
-                                c.column.id !== "actions" &&
-                                c.column.id !== "select" &&
-                                (c.column.id.toLowerCase().includes("email") ||
-                                  c.column.id.toLowerCase().includes("date") ||
-                                  c.column.id.toLowerCase().includes("role")),
-                            )?.column.id;
-                          if (cell.column.id === subtitleCellId) return null;
+                            // Logic to skip title/subtitle if clearly identified (optional, keeping it simple to just dump all other info evenly)
+                            const isTitle =
+                              cell.column.id ===
+                              row
+                                .getVisibleCells()
+                                .find(
+                                  (c) =>
+                                    c.column.id !== "actions" &&
+                                    c.column.id !== "select",
+                                )?.column.id;
+                            if (isTitle) return null; // Already shown in header
 
-                          return (
-                            <div key={cell.id} className="flex flex-col gap-1">
-                              <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500">
-                                {cell.column.columnDef.header as string}
-                              </span>
-                              <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">
-                                {flexRender(
-                                  cell.column.columnDef.cell,
-                                  cell.getContext(),
-                                )}
-                              </span>
-                            </div>
-                          );
-                        })}
+                            // Actually, let's just show everything else in the body to be safe, maybe except ID if it was title.
+
+                            return (
+                              <div
+                                key={cell.id}
+                                className="flex flex-col gap-1 min-w-0"
+                              >
+                                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500">
+                                  {cell.column.columnDef.header as string}
+                                </span>
+                                <span className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">
+                                  {flexRender(
+                                    cell.column.columnDef.cell,
+                                    cell.getContext(),
+                                  )}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
 
                       {/* Card Footer - Actions */}
-                      <div className="p-4 border-t border-gray-50 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-700/30 flex justify-end gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                        {onView && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAction(row.original, "view");
-                            }}
-                            className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-                            title="View"
-                          >
-                            <FaEye size={16} />
-                          </button>
-                        )}
-                        {(onEdit || onEditPage) && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (onEditPage) {
-                                onEditPage(row.original);
-                              } else {
-                                handleAction(row.original, "edit");
-                              }
-                            }}
-                            className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
-                            title="Edit"
-                          >
-                            <FaEdit size={16} />
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleAction(row.original, "delete");
-                            }}
-                            className="p-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <FaTrash size={16} />
-                          </button>
-                        )}
+                      <div className="p-3 px-5 border-t border-gray-50 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-700/30 flex justify-between items-center group-hover:bg-gray-100/50 transition-colors">
+                        <span className="text-xs text-gray-400 font-medium">
+                          {/* Placeholder for status or extra info if needed */}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          {onView && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAction(row.original, "view");
+                              }}
+                              className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                              title="View"
+                            >
+                              <FaEye size={16} />
+                            </button>
+                          )}
+                          {(onEdit || onEditPage) && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (onEditPage) {
+                                  onEditPage(row.original);
+                                } else {
+                                  handleAction(row.original, "edit");
+                                }
+                              }}
+                              className="p-2 text-gray-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                              title="Edit"
+                            >
+                              <FaEdit size={16} />
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAction(row.original, "delete");
+                              }}
+                              className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              title="Delete"
+                            >
+                              <FaTrash size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1173,6 +1319,60 @@ export function ReusableTable<TData, TValue>({
             <span className="font-mono text-xs text-red-700">
               ID: {activeRow ? getRowId(activeRow) : "Unknown"}
             </span>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bulk Delete Modal */}
+      <Modal
+        isOpen={modalType === "bulk_delete" && selectedCount > 0}
+        onClose={closeModal}
+        title="Bulk Delete Items"
+        footer={
+          <div className="flex justify-end gap-2 w-full">
+            <button
+              onClick={closeModal}
+              disabled={isBulkDeleting}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              disabled={isBulkDeleting}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 shadow-md shadow-red-100"
+            >
+              {isBulkDeleting ? (
+                <>
+                  <FaSpinner className="animate-spin" size={12} />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <FaTrash size={12} />
+                  Confirm Bulk Delete ({selectedCount})
+                </>
+              )}
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Are you sure you want to delete{" "}
+            <span className="font-bold text-gray-900">{selectedCount}</span>{" "}
+            selected items? This action{" "}
+            <span className="text-red-600 font-semibold uppercase tracking-tight">
+              cannot be undone
+            </span>{" "}
+            and will permanently remove these records from the database.
+          </p>
+          <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/20">
+            <ul className="text-xs text-red-700 dark:text-red-400 space-y-1 list-disc list-inside opacity-80">
+              <li>Permanent data removal</li>
+              <li>Related data may be affected</li>
+              <li>No recovery option available</li>
+            </ul>
           </div>
         </div>
       </Modal>

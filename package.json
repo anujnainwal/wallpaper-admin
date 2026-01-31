@@ -16,6 +16,7 @@
     "@tanstack/react-table": "^8.21.3",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
+    "countrycitystatejson": "^25.8.101",
     "jwt-decode": "^4.0.0",
     "react": "^19.2.0",
     "react-country-state-city": "^1.1.12",
