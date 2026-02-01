@@ -12,9 +12,11 @@ api.interceptors.request.use(
   (config) => {
     let token = null;
     try {
-      token = localStorage.getItem('token');
+      if (typeof window !== 'undefined' && window.localStorage) {
+        token = window.localStorage.getItem('token');
+      }
     } catch (e) {
-      console.warn('LocalStorage access denied', e);
+      // Access denied or not available
     }
     
     if (token) {
@@ -34,7 +36,9 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized globally
     if (error.response?.status === 401) {
       try {
-        localStorage.removeItem('token');
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.removeItem('token');
+        }
       } catch (e) {
         // Ignore storage errors
       }

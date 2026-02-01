@@ -1,16 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaSave,
-  FaBold,
-  FaItalic,
-  FaListUl,
-  FaListOl,
-  FaLink,
-  FaEye,
-  FaCheckCircle,
-  FaTimesCircle,
-} from "react-icons/fa";
+import { FaSave, FaCheckCircle, FaTimesCircle, FaEye } from "react-icons/fa";
 import { toast } from "react-hot-toast";
+import { Editor } from "@tinymce/tinymce-react";
+
 import {
   legalDocumentService,
   type LegalDocument,
@@ -23,12 +15,15 @@ const LegalDocuments: React.FC = () => {
   const [documents, setDocuments] = useState<Record<string, LegalDocument>>({});
   const [loading, setLoading] = useState(false);
 
-  // We need a ref to the contentEditable element to update its content when switching tabs
-  const editorRef = React.useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
+  const handleUpdate = (field: keyof LegalDocument, value: string) => {
+    setDocuments((prev) => ({
+      ...prev,
+      [activeTab]: {
+        ...prev[activeTab],
+        [field]: value,
+      },
+    }));
+  };
 
   const fetchDocuments = async () => {
     try {
@@ -36,15 +31,14 @@ const LegalDocuments: React.FC = () => {
       const response = await legalDocumentService.getAll();
       const docsMap: Record<string, LegalDocument> = {};
 
-      // Robust handling for potential backend wrapper variations
       let fetchedDocs: LegalDocument[] = [];
       if (Array.isArray(response.data)) {
         fetchedDocs = response.data;
       } else if (response.data && Array.isArray(response.data.data)) {
         fetchedDocs = response.data.data;
       }
+      console.log(response?.data);
 
-      // Initialize with defaults if missing
       const types: DocumentType[] = ["terms", "privacy", "disclaimer", "eula"];
       types.forEach((type) => {
         const found = fetchedDocs.find((d) => d.type === type);
@@ -71,37 +65,9 @@ const LegalDocuments: React.FC = () => {
     }
   };
 
-  // Update editor content when active tab changes
   useEffect(() => {
-    if (editorRef.current && documents[activeTab]) {
-      editorRef.current.innerHTML = documents[activeTab].content || "";
-    }
-  }, [activeTab, documents]);
-
-  const handleUpdate = (field: keyof LegalDocument, value: string) => {
-    setDocuments((prev) => ({
-      ...prev,
-      [activeTab]: {
-        ...prev[activeTab],
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleContentChange = (e: React.FormEvent<HTMLDivElement>) => {
-    handleUpdate("content", e.currentTarget.innerHTML);
-  };
-
-  const execCommand = (
-    command: string,
-    value: string | undefined = undefined,
-  ) => {
-    document.execCommand(command, false, value);
-    // Keep focus on editor
-    if (editorRef.current) {
-      editorRef.current.focus();
-    }
-  };
+    fetchDocuments();
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -128,7 +94,6 @@ const LegalDocuments: React.FC = () => {
   const handlePreview = () => {
     try {
       const doc = documents[activeTab];
-      // Create a temporary blob to exhibit the HTML content properly
       const blob = new Blob(
         [
           `
@@ -137,9 +102,9 @@ const LegalDocuments: React.FC = () => {
             <title>${doc.title} - Preview</title>
             <style>
               body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-              h1 { border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
-              h2, h3 { margin-top: 1.5rem; }
-              ul, ol { padding-left: 1.5rem; }
+              img { max-width: 100%; height: auto; }
+              blockquote { border-left: 4px solid #ccc; padding-left: 1rem; color: #666; }
+              code { background: #f4f4f4; padding: 0.2rem 0.4rem; border-radius: 4px; }
             </style>
           </head>
           <body>
@@ -148,7 +113,7 @@ const LegalDocuments: React.FC = () => {
               <strong>Version:</strong> ${doc.version} <br/>
               <strong>Date:</strong> ${doc.effectiveDate}
             </div>
-            ${doc.content}
+            <div style="white-space: pre-wrap;">${doc.content}</div>
           </body>
         </html>
         `,
@@ -158,7 +123,6 @@ const LegalDocuments: React.FC = () => {
       const url = URL.createObjectURL(blob);
       window.open(url, "_blank");
     } catch (e) {
-      // Fallback
       alert("Could not create preview window.");
     }
   };
@@ -276,102 +240,43 @@ const LegalDocuments: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Content
               </label>
-              <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all flex flex-col">
-                {/* Real Toolbar */}
-                <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex items-center gap-1 flex-wrap">
-                  {/* Headings */}
-                  <div className="flex items-center bg-white rounded-lg border border-gray-200 p-0.5">
-                    <button
-                      onClick={() => execCommand("formatBlock", "H1")}
-                      className="px-2 py-1 text-gray-600 hover:text-indigo-600 hover:bg-gray-50 rounded text-sm font-bold"
-                      title="Heading 1"
-                    >
-                      H1
-                    </button>
-                    <button
-                      onClick={() => execCommand("formatBlock", "H2")}
-                      className="px-2 py-1 text-gray-600 hover:text-indigo-600 hover:bg-gray-50 rounded text-sm font-bold"
-                      title="Heading 2"
-                    >
-                      H2
-                    </button>
-                    <button
-                      onClick={() => execCommand("formatBlock", "H3")}
-                      className="px-2 py-1 text-gray-600 hover:text-indigo-600 hover:bg-gray-50 rounded text-sm font-bold"
-                      title="Heading 3"
-                    >
-                      H3
-                    </button>
-                  </div>
-
-                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
-
-                  {/* Formatting */}
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => execCommand("bold")}
-                      className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors"
-                      title="Bold"
-                    >
-                      <FaBold size={14} />
-                    </button>
-                    <button
-                      onClick={() => execCommand("italic")}
-                      className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors"
-                      title="Italic"
-                    >
-                      <FaItalic size={14} />
-                    </button>
-                    <button
-                      onClick={() => execCommand("underline")}
-                      className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors font-serif font-bold text-sm underline"
-                      title="Underline"
-                    >
-                      U
-                    </button>
-                  </div>
-
-                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
-
-                  {/* Lists */}
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => execCommand("insertUnorderedList")}
-                      className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors"
-                      title="Bullet List"
-                    >
-                      <FaListUl size={14} />
-                    </button>
-                    <button
-                      onClick={() => execCommand("insertOrderedList")}
-                      className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors"
-                      title="Numbered List"
-                    >
-                      <FaListOl size={14} />
-                    </button>
-                  </div>
-
-                  <div className="w-px h-6 bg-gray-300 mx-1"></div>
-
-                  <button
-                    onClick={() => {
-                      const url = prompt("Enter Link URL:");
-                      if (url) execCommand("createLink", url);
-                    }}
-                    className="p-1.5 text-gray-600 hover:text-indigo-600 hover:bg-gray-200 rounded transition-colors"
-                    title="Insert Link"
-                  >
-                    <FaLink size={14} />
-                  </button>
-                </div>
-
-                {/* Content Area */}
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleContentChange}
-                  className="flex-1 p-6 focus:outline-none overflow-y-auto prose max-w-none text-gray-800"
-                  style={{ minHeight: "200px" }}
+              <div className="flex-1 rounded-xl overflow-hidden shadow-sm bg-white border border-gray-200">
+                <Editor
+                  key={activeTab} // Force remount on tab change to ensure clean state
+                  apiKey="h54nh96celgri1gkivmkyaltregzyuga9m8ggkskpf13qwoe"
+                  init={{
+                    height: 500,
+                    menubar: false,
+                    plugins: [
+                      "advlist",
+                      "autolink",
+                      "lists",
+                      "link",
+                      "image",
+                      "charmap",
+                      "preview",
+                      "anchor",
+                      "searchreplace",
+                      "visualblocks",
+                      "code",
+                      "fullscreen",
+                      "insertdatetime",
+                      "media",
+                      "table",
+                      "code",
+                      "help",
+                      "wordcount",
+                    ],
+                    toolbar:
+                      "undo redo | blocks | " +
+                      "bold italic forecolor | alignleft aligncenter " +
+                      "alignright alignjustify | bullist numlist outdent indent | " +
+                      "removeformat | help",
+                    content_style:
+                      "body { font-family:Helvetica,Arial,sans-serif; font-size:14px }",
+                  }}
+                  initialValue={currentDoc.content || ""}
+                  onEditorChange={(content) => handleUpdate("content", content)}
                 />
               </div>
             </div>

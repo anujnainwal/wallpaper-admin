@@ -146,7 +146,7 @@ const AddNotification: React.FC = () => {
 
       // Delay navigation to show toast
       setTimeout(() => {
-        navigate("/notifications");
+        navigate("/notifications/list");
       }, 1500);
     } catch (error) {
       console.error("Failed to send notification:", error);

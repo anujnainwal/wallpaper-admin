@@ -2,28 +2,19 @@ import api from './api';
 
 export interface AuditLog {
   _id: string;
-  id?: string;
   userId: string;
   userName: string;
   action: string;
   entity: string;
   entityId?: string;
   details?: string;
-  ipAddress: string;
+  ipAddress?: string;
   userAgent?: string;
+  status: 'success' | 'failure' | 'warning';
   createdAt: string;
-  status: "success" | "failure" | "warning";
 }
 
-interface GetAuditLogsParams {
-  page?: number;
-  limit?: number;
-  search?: string;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}
-
-interface AuditLogsResponse {
+export interface AuditLogResponse {
   data: AuditLog[];
   meta: {
     total: number;
@@ -33,14 +24,19 @@ interface AuditLogsResponse {
   };
 }
 
-export const getAuditLogs = async (
-  params: GetAuditLogsParams,
-): Promise<AuditLogsResponse> => {
-  const response = await api.get('/audit-logs', { params });
-  return response.data.data;
-};
-
-export const bulkDeleteAuditLogs = async (ids: string[]) => {
-  const response = await api.post('/audit-logs/bulk-delete', { ids });
-  return response.data;
+export const auditLogService = {
+  getLogs: async (params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+    userId?: string;
+  }) => {
+    // The API returns { success: true, data: { data: [], meta: {} } }
+    // We explicitly type the axios GET to 'any' or a wrapper type to avoid TS confusion, 
+    // then return the inner data payload.
+    const response = await api.get('/audit-logs', { params });
+    return response.data.data;
+  },
 };

@@ -3,7 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { FaUserClock, FaHistory } from "react-icons/fa";
 import { ReusableTable } from "../../components/common/ReusableTable";
 import CircularProgressModal from "../../components/common/CircularProgressModal";
-import { getAuditLogs, type AuditLog } from "../../services/auditLogService";
+import { auditLogService, type AuditLog } from "../../services/auditLogService";
 import { notifyError, notifySuccess } from "../../utils/toastUtils";
 import { useEventStream } from "../../hooks/useEventStream";
 
@@ -165,7 +165,7 @@ const AuditLogList: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await getAuditLogs({
+      const response = await auditLogService.getLogs({
         page: pagination.pageIndex + 1,
         limit: pagination.pageSize,
       });
