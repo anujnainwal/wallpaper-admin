@@ -1,84 +1,102 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   FaArrowLeft,
-  FaAndroid,
-  FaApple,
-  FaMobileAlt,
   FaEnvelope,
   FaPhone,
   FaGlobe,
-  FaCrown,
-  FaHeart,
-  FaDownload,
   FaClock,
   FaCalendar,
   FaBan,
   FaTrash,
 } from "react-icons/fa";
 import Modal from "../../components/common/Modal";
-
-// Mock user data (in real app, this would come from API)
-const mockUser = {
-  id: 1,
-  name: "Alex Johnson",
-  email: "alex.j@gmail.com",
-  phone: "+1 555-0101",
-  platform: "iOS" as const,
-  subscriptionStatus: "Premium" as const,
-  joinedDate: "2023-01-15",
-  lastActive: "2024-01-24",
-  totalDownloads: 245,
-  totalFavorites: 89,
-  deviceInfo: "iPhone 15 Pro",
-  country: "USA",
-  subscriptionStartDate: "2023-06-15",
-  subscriptionEndDate: "2024-06-15",
-};
+import { userService, type User as AppUser } from "../../services/userService";
+import { notifySuccess, notifyError } from "../../utils/toastUtils";
 
 const AppUserDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const [user] = useState(mockUser); // In real app, fetch based on id
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [loading, setLoading] = useState(true);
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  const getPlatformIcon = (platform: string) => {
-    switch (platform) {
-      case "Android":
-        return (
-          <FaAndroid className="text-green-500 dark:text-green-400" size={24} />
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!id) return;
+      try {
+        setLoading(true);
+        const res = await userService.getById(id);
+        if (res.success) {
+          setUser(res.data);
+        }
+      } catch (error: any) {
+        notifyError(error || "Failed to fetch user details");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, [id]);
+
+  const handleSuspend = async () => {
+    if (!user || !id) return;
+    try {
+      const newStatus =
+        user.accountStatus === "Suspended" ? "Active" : "Suspended";
+      const res = await userService.update(id, { accountStatus: newStatus });
+      if (res.success) {
+        notifySuccess(
+          `User ${newStatus === "Suspended" ? "suspended" : "activated"} successfully`,
         );
-      case "iOS":
-        return (
-          <FaApple className="text-gray-900 dark:text-gray-100" size={24} />
-        );
-      case "Both":
-        return (
-          <FaMobileAlt
-            className="text-indigo-500 dark:text-indigo-400"
-            size={24}
-          />
-        );
-      default:
-        return (
-          <FaMobileAlt className="text-gray-500 dark:text-gray-400" size={24} />
-        );
+        setUser({ ...user, accountStatus: newStatus });
+      }
+    } catch (error: any) {
+      notifyError(error || "Failed to update user status");
+    } finally {
+      setSuspendModalOpen(false);
     }
   };
 
-  const handleSuspend = () => {
-    // TODO: API call to suspend user
-    console.log("Suspending user:", id);
-    setSuspendModalOpen(false);
+  const handleDelete = async () => {
+    if (!id) return;
+    try {
+      const res = await userService.delete(id);
+      if (res.success) {
+        notifySuccess("User deleted successfully");
+        navigate("/app-users/list");
+      }
+    } catch (error: any) {
+      notifyError(error || "Failed to delete user");
+    } finally {
+      setDeleteModalOpen(false);
+    }
   };
 
-  const handleDelete = () => {
-    // TODO: API call to delete user
-    console.log("Deleting user:", id);
-    setDeleteModalOpen(false);
-    navigate("/app-users/list");
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          User not found
+        </h2>
+        <button
+          onClick={() => navigate("/app-users/list")}
+          className="mt-4 text-indigo-600 hover:text-indigo-500 font-medium"
+        >
+          Back to list
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -107,33 +125,25 @@ const AppUserDetail: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
             <div className="flex flex-col items-center text-center">
               <div className="w-24 h-24 rounded-full bg-linear-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white font-bold text-3xl mb-4">
-                {user.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()}
+                {user.firstName?.[0]}
+                {user.lastName?.[0]}
               </div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-1">
-                {user.name}
+                {user.firstName} {user.lastName}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                 User ID: #{id}
               </p>
 
-              {/* Subscription Badge */}
+              {/* Status Badge */}
               <span
                 className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                  user.subscriptionStatus === "Premium"
-                    ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400"
-                    : user.subscriptionStatus === "Free"
-                      ? "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
-                      : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
+                  user.accountStatus === "Active"
+                    ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-400"
+                    : "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-400"
                 }`}
               >
-                {user.subscriptionStatus === "Premium" && (
-                  <FaCrown className="mr-1" size={10} />
-                )}
-                {user.subscriptionStatus}
+                {user.accountStatus}
               </span>
             </div>
           </div>
@@ -167,7 +177,7 @@ const AppUserDetail: React.FC = () => {
                     Phone
                   </p>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {user.phone}
+                    {user.phoneNumber || "N/A"}
                   </p>
                 </div>
               </div>
@@ -196,40 +206,16 @@ const AppUserDetail: React.FC = () => {
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
               Activity Statistics
             </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-xl">
-                <FaDownload
-                  className="mx-auto mb-2 text-purple-600 dark:text-purple-400"
-                  size={24}
-                />
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {user.totalDownloads}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Downloads
-                </p>
-              </div>
-
-              <div className="text-center p-4 bg-pink-50 dark:bg-pink-900/20 rounded-xl">
-                <FaHeart
-                  className="mx-auto mb-2 text-pink-600 dark:text-pink-400"
-                  size={24}
-                />
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                  {user.totalFavorites}
-                </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Favorites
-                </p>
-              </div>
-
+            <div className="grid grid-cols-2 md:grid-cols-2 gap-4">
               <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl">
                 <FaCalendar
                   className="mx-auto mb-2 text-indigo-600 dark:text-indigo-400"
                   size={24}
                 />
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {user.joinedDate}
+                  {user.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString()
+                    : "N/A"}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   Joined
@@ -242,77 +228,14 @@ const AppUserDetail: React.FC = () => {
                   size={24}
                 />
                 <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                  {user.lastActive}
+                  {user.isActive ? "Active Now" : "Inactive"}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  Last Active
+                  Status
                 </p>
               </div>
             </div>
           </div>
-
-          {/* Device & Platform */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-              Device Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                {getPlatformIcon(user.platform)}
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Platform
-                  </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {user.platform}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
-                <FaMobileAlt
-                  className="text-gray-600 dark:text-gray-400"
-                  size={24}
-                />
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Device
-                  </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {user.deviceInfo}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Subscription Details */}
-          {user.subscriptionStatus === "Premium" && (
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <FaCrown className="text-yellow-500 dark:text-yellow-400" />
-                Premium Subscription
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    Start Date
-                  </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {user.subscriptionStartDate}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    End Date
-                  </p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                    {user.subscriptionEndDate}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Account Actions */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-6 transition-colors duration-300">
