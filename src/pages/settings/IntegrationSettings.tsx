@@ -71,6 +71,7 @@ const IntegrationSettings: React.FC = () => {
   const [unsplashConfig, setUnsplashConfig] = useState({
     accessKey: "",
     secretKey: "",
+    accountId: "",
     isActive: false,
   });
 
@@ -156,6 +157,7 @@ const IntegrationSettings: React.FC = () => {
         config: {
           accessKey: unsplashConfig.accessKey,
           secretKey: unsplashConfig.secretKey,
+          accountId: unsplashConfig.accountId,
         },
         isActive: unsplashConfig.isActive,
       };
@@ -257,6 +259,23 @@ const IntegrationSettings: React.FC = () => {
               {showPasswords["unsplashSecret"] ? <FaEyeSlash /> : <FaEye />}
             </button>
           </div>
+        </div>
+        <div className="md:col-span-2 space-y-2">
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            Account ID (Optional)
+          </label>
+          <input
+            type="text"
+            value={unsplashConfig.accountId || ""}
+            onChange={(e) =>
+              setUnsplashConfig({
+                ...unsplashConfig,
+                accountId: e.target.value,
+              })
+            }
+            placeholder="Enter Account ID"
+            className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-black/20 focus:border-black dark:text-white"
+          />
         </div>
       </div>
     </form>

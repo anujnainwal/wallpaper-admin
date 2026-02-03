@@ -53,7 +53,7 @@ const Home: React.FC = () => {
 
   const fetchStats = async () => {
     try {
-      setLoading(true);
+      setLoading(true); // This setLoading will now be for dashboard stats, not wallpapers
       setError(null);
       const data = await dashboardService.getStats();
       setStats(data);

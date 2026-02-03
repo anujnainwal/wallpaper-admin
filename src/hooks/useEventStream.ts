@@ -2,7 +2,14 @@ import { useEffect } from 'react';
 
 interface EventData {
   model: string;
-  action: 'create' | 'update' | 'delete' | 'bulk_delete';
+  action:
+    | "create"
+    | "update"
+    | "delete"
+    | "bulk_delete"
+    | "processing_start"
+    | "processing_complete"
+    | "processing_error";
   id?: string;
   ids?: string[];
   data?: any;
@@ -10,7 +17,7 @@ interface EventData {
 
 export const useEventStream = (onUpdate?: (event: EventData) => void) => {
   useEffect(() => {
-    const streamUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api/v1'}/events/stream`;
+    const streamUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:4005/api/v1'}/events/stream`;
     
     // SSE requires the EventSource native API
     const eventSource = new EventSource(streamUrl);

@@ -10,26 +10,42 @@ import { type ColumnDef } from "@tanstack/react-table";
 
 const CategoryList: React.FC = () => {
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [stableData, setStableData] = useState<{
+    categories: Category[];
+    total: number;
+  }>({
+    categories: [],
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [searchParams] = useSearchParams();
   const parentId = searchParams.get("parent");
   const [parentCategory, setParentCategory] = useState<Category | null>(null);
   const [globalFilter, setGlobalFilter] = useState("");
 
+  const [pagination, setPagination] = useState({
+    pageIndex: 0,
+    pageSize: 10,
+  });
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = {};
-      // Only filter by parent if explicit.
-      // ReusableTable might handle search, but backend needs it?
-      // ReusableTable handles client-side search by default unless manualFiltering is set.
-      // For now, let's load all or just by parent.
+      const params: any = {
+        page: pagination.pageIndex + 1,
+        limit: pagination.pageSize,
+        search: globalFilter,
+      };
 
+      // Filter by parent if explicit
       params.parent = parentId || "null";
 
-      const data = await categoryService.getAll(params);
-      setCategories(data.data);
+      const response = await categoryService.getAll(params);
+
+      setStableData({
+        categories: response.data || [],
+        total: response.total || 0,
+      });
 
       if (parentId) {
         try {
@@ -47,7 +63,7 @@ const CategoryList: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [parentId]);
+  }, [parentId, pagination.pageIndex, pagination.pageSize, globalFilter]);
 
   useEffect(() => {
     fetchData();
@@ -193,6 +209,8 @@ const CategoryList: React.FC = () => {
     [],
   );
 
+  const { categories, total: rowCount } = stableData;
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -238,6 +256,10 @@ const CategoryList: React.FC = () => {
         searchPlaceholder="Search categories..."
         globalFilter={globalFilter}
         onGlobalFilterChange={setGlobalFilter}
+        // Pagination Props
+        rowCount={rowCount}
+        pagination={pagination}
+        onPaginationChange={setPagination}
         onSelectionChange={(selected) =>
           console.log("Selected categories:", selected)
         }

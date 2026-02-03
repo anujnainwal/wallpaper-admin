@@ -17,9 +17,14 @@ import { notifySuccess, notifyError } from "../../utils/toastUtils";
 
 const AppUserList: React.FC = () => {
   const navigate = useNavigate();
-  const [data, setData] = useState<AppUser[]>([]);
+  const [stableData, setStableData] = useState<{
+    users: AppUser[];
+    total: number;
+  }>({
+    users: [],
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [totalUsers, setTotalUsers] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [search, setSearch] = useState("");
@@ -28,9 +33,15 @@ const AppUserList: React.FC = () => {
     try {
       setLoading(true);
       const res = await userService.getAll({ page, limit, search });
-      if (res.success) {
-        setData(res.data || []);
-        setTotalUsers(res.pagination?.total || 0);
+      if (res) {
+        // Robust parsing: check for data in res.data (old) or res directly (new)
+        const rawData = res.data;
+        const users = Array.isArray(rawData)
+          ? rawData
+          : (rawData as any)?.data || [];
+        const total = res.pagination?.total ?? (rawData as any)?.total ?? 0;
+
+        setStableData({ users, total });
       }
     } catch (error: any) {
       notifyError(error || "Failed to fetch users");
@@ -227,6 +238,8 @@ const AppUserList: React.FC = () => {
     [],
   );
 
+  const { users: data, total: totalUsers } = stableData;
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -250,7 +263,7 @@ const AppUserList: React.FC = () => {
         searchPlaceholder="Search users by name or email..."
         onBulkDelete={handleBulkDelete}
         loading={loading}
-        pageCount={Math.ceil(totalUsers / limit)}
+        rowCount={totalUsers}
         pagination={{ pageIndex: page - 1, pageSize: limit }}
         onPaginationChange={(updater) => {
           if (typeof updater === "function") {

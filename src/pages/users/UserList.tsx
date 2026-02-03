@@ -27,9 +27,14 @@ const UserList: React.FC = () => {
   const navigate = useNavigate();
 
   // Data State
-  const [data, setData] = useState<User[]>([]);
+  const [stableData, setStableData] = useState<{
+    users: User[];
+    total: number;
+  }>({
+    users: [],
+    total: 0,
+  });
   const [loading, setLoading] = useState(true);
-  const [rowCount, setRowCount] = useState(0);
 
   // Table State
   const [pagination, setPagination] = useState<PaginationState>({
@@ -68,9 +73,14 @@ const UserList: React.FC = () => {
       // And service returns response.data which is the whole body.
       // So response.data.data is the list.
 
-      if (response && response.data) {
-        setData(response.data.data || []);
-        setRowCount(response.data.total || 0);
+      if (response) {
+        // Robust handling
+        const rawData = response.data; // This might be array (new) or object (old)
+
+        const users = Array.isArray(rawData) ? rawData : rawData?.data || [];
+        const total = response.pagination?.total ?? rawData?.total ?? 0;
+
+        setStableData({ users, total });
       }
     } catch (error) {
       console.error("Failed to fetch users", error);
@@ -276,6 +286,8 @@ const UserList: React.FC = () => {
     [],
   );
 
+  const { users: data, total: rowCount } = stableData;
+
   return (
     <div className="space-y-6 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -301,7 +313,7 @@ const UserList: React.FC = () => {
         searchPlaceholder="Search by name, email, or phone..."
         loading={loading}
         // Server-side props
-        pageCount={Math.ceil(rowCount / pagination.pageSize)}
+        rowCount={rowCount}
         pagination={pagination}
         onPaginationChange={setPagination}
         sorting={sorting}

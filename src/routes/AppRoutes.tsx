@@ -20,6 +20,7 @@ import HelpSupport from "../pages/support/HelpSupport";
 import TempTablePage from "../pages/TempTablePage";
 import ApiTablePage from "../pages/ApiTablePage";
 import WallpaperListPage from "../pages/WallpaperListPage";
+import WallpaperDetailsPage from "../pages/WallpaperDetailsPage";
 import AddWallpaperPage from "../pages/AddWallpaperPage";
 import UserList from "../pages/users/UserList";
 import AddUser from "../pages/users/AddUser";
@@ -109,6 +110,7 @@ const AppRoutes: React.FC = () => {
           element={<Navigate to="wallpapers/list" replace />}
         />
         <Route path="wallpapers/list" element={<WallpaperListPage />} />
+        <Route path="wallpapers/:id" element={<WallpaperDetailsPage />} />
         <Route path="wallpapers/add" element={<AddWallpaperPage />} />
         <Route path="wallpapers/edit/:id" element={<AddWallpaperPage />} />
 

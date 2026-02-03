@@ -3,6 +3,7 @@ import api from "./api";
 export interface Wallpaper {
   _id?: string;
   title: string;
+  description?: string;
   image: string;
   thumbnail: string;
   category: string | { _id: string; name: string };
@@ -10,6 +11,17 @@ export interface Wallpaper {
   format: string;
   status: string;
   createdAt?: string;
+  colors?: string[];
+  meta?: any;
+  dimensions?: { width: number; height: number };
+  fileSize?: number;
+  source?: string;
+  sourceUrl?: string;
+  author?: string;
+  license?: string;
+  views?: number;
+  downloads?: number;
+  likes?: number;
 }
 
 export const wallpaperService = {
@@ -23,8 +35,17 @@ export const wallpaperService = {
   },
 
   getAll: async (params?: any) => {
-    const response = await api.get<{ success: boolean; data: { data: Wallpaper[]; total: number; page: number; limit: number } }>("/wallpapers", { params });
-    return response.data; // returns { success, data: { data: [], ... } }
+    const response = await api.get<{
+      success: boolean;
+      data: Wallpaper[];
+      pagination?: {
+        total: number;
+        page: number;
+        limit: number;
+        totalPages: number;
+      };
+    }>("/wallpapers", { params });
+    return response.data;
   },
 
   getById: async (id: string) => {

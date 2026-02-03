@@ -27,19 +27,18 @@ export interface Category {
 export const categoryService = {
   getAllCategories: async (): Promise<Category[]> => {
     const response = await api.get('/categories', { params: { limit: 100, isActive: true } });
-    return response.data.data.data;
+    return response.data.data;
   },
 
   getAll: async (params?: any): Promise<{ data: Category[]; total: number }> => {
     // If querying root categories, ensure params.parent is string 'null' if intended, 
     // or handled by UI state.
     const response = await api.get('/categories', { params });
-    // Assuming backend returns { success: true, data: { data: [], total: ... } } OR { success: true, data: [] }
-    // Adjust based on backend controller formatting.
-    // Controller calls ResponseUtil.success(res, result);
-    // Service returns { data, total, page, limit }
-    // So response.data.data will have { data, total ... }
-    return response.data.data; 
+    // New Format: { success: true, data: [...], pagination: { total, ... } }
+    return {
+      data: response.data.data,
+      total: response.data.pagination?.total || 0
+    }; 
   },
 
   getById: async (id: string): Promise<Category> => {
