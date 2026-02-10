@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "../hooks/storeHook";
 import { logout } from "../store/slices/authSlice";
 import { jwtDecode } from "jwt-decode";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import DashboardLayout from "../layouts/DashboardLayout";
 import AuthLayout from "../layouts/AuthLayout";
 import Home from "../pages/dashboard/Home";
@@ -71,6 +72,8 @@ const PublicRoute = ({ children }: { children: React.ReactElement }) => {
 };
 
 const AppRoutes: React.FC = () => {
+  useDocumentTitle();
+
   return (
     <Routes>
       {/* Auth Routes */}

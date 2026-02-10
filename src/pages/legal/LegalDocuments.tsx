@@ -8,7 +8,7 @@ import {
   type LegalDocument,
 } from "../../services/legalDocumentService";
 
-type DocumentType = "terms" | "privacy" | "disclaimer" | "eula";
+type DocumentType = "terms" | "privacy" | "disclaimer" | "eula" | "about-app";
 
 const LegalDocuments: React.FC = () => {
   const [activeTab, setActiveTab] = useState<DocumentType>("terms");
@@ -39,14 +39,22 @@ const LegalDocuments: React.FC = () => {
       }
       console.log(response?.data);
 
-      const types: DocumentType[] = ["terms", "privacy", "disclaimer", "eula"];
+      const types: DocumentType[] = [
+        "terms",
+        "privacy",
+        "disclaimer",
+        "eula",
+        "about-app",
+      ];
       types.forEach((type) => {
         const found = fetchedDocs.find((d) => d.type === type);
         docsMap[type] = found || {
           title:
             type === "terms"
               ? "Terms & Conditions"
-              : type.charAt(0).toUpperCase() + type.slice(1),
+              : type === "about-app"
+                ? "About App"
+                : type.charAt(0).toUpperCase() + type.slice(1),
           slug: type,
           type: type,
           version: "1.0",
@@ -166,27 +174,35 @@ const LegalDocuments: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl w-fit">
-        {(["terms", "privacy", "disclaimer", "eula"] as DocumentType[]).map(
-          (tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
-                activeTab === tab
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
-              }`}
-            >
-              {tab === "terms"
-                ? "Terms"
-                : tab === "privacy"
-                  ? "Privacy"
-                  : tab === "disclaimer"
-                    ? "Disclaimer"
+        {(
+          [
+            "terms",
+            "privacy",
+            "disclaimer",
+            "eula",
+            "about-app",
+          ] as DocumentType[]
+        ).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize ${
+              activeTab === tab
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500 hover:text-gray-700 hover:bg-white/50"
+            }`}
+          >
+            {tab === "terms"
+              ? "Terms"
+              : tab === "privacy"
+                ? "Privacy"
+                : tab === "disclaimer"
+                  ? "Disclaimer"
+                  : tab === "about-app"
+                    ? "About App"
                     : "EULA"}
-            </button>
-          ),
-        )}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

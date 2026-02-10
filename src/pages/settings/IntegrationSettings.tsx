@@ -12,9 +12,13 @@ import {
   FaCheckCircle,
   FaEye,
   FaEyeSlash,
+  FaCamera,
+  FaSync,
+  FaClock,
 } from "react-icons/fa";
 import toast from "react-hot-toast";
 import { integrationService } from "../../services/integrationService";
+import type { Integration } from "../../services/integrationService";
 
 type IntegrationType = "content" | "storage";
 
@@ -45,6 +49,15 @@ const INTEGRATIONS: IntegrationMeta[] = [
     color: "bg-blue-600",
   },
   {
+    id: "pixabay",
+    name: "Pixabay",
+    type: "content",
+    description:
+      "Access stunning free images & royalty free stock from Pixabay.",
+    icon: <FaCamera size={24} />,
+    color: "bg-green-600",
+  },
+  {
     id: "cloudflare-r2",
     name: "Cloudflare R2",
     type: "storage",
@@ -53,6 +66,37 @@ const INTEGRATIONS: IntegrationMeta[] = [
     color: "bg-orange-500",
   },
 ];
+
+// Interfaces
+interface BaseConfig {
+  isActive: boolean;
+  schedule?: string;
+  lastSyncAt?: string | null;
+  syncStatus?: string;
+}
+
+interface UnsplashConfig extends BaseConfig {
+  accessKey: string;
+  secretKey: string;
+  accountId: string;
+}
+
+interface FreepikConfig extends BaseConfig {
+  apiKey: string;
+}
+
+interface PixabayConfig extends BaseConfig {
+  apiKey: string;
+}
+
+interface R2Config {
+  accountId: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  bucketName: string;
+  publicUrl: string;
+  isActive: boolean;
+}
 
 const IntegrationSettings: React.FC = () => {
   const [view, setView] = useState<"grid" | "form">("grid");
@@ -68,19 +112,33 @@ const IntegrationSettings: React.FC = () => {
   };
 
   // Configuration States
-  const [unsplashConfig, setUnsplashConfig] = useState({
+  const [unsplashConfig, setUnsplashConfig] = useState<UnsplashConfig>({
     accessKey: "",
     secretKey: "",
     accountId: "",
     isActive: false,
+    schedule: "manual",
+    lastSyncAt: null,
+    syncStatus: "IDLE",
   });
 
-  const [freepikConfig, setFreepikConfig] = useState({
+  const [freepikConfig, setFreepikConfig] = useState<FreepikConfig>({
     apiKey: "",
     isActive: false,
+    schedule: "manual",
+    lastSyncAt: null,
+    syncStatus: "IDLE",
   });
 
-  const [r2Config, setR2Config] = useState({
+  const [pixabayConfig, setPixabayConfig] = useState<PixabayConfig>({
+    apiKey: "",
+    isActive: false,
+    schedule: "manual",
+    lastSyncAt: null,
+    syncStatus: "IDLE",
+  });
+
+  const [r2Config, setR2Config] = useState<R2Config>({
     accountId: "",
     accessKeyId: "",
     secretAccessKey: "",
@@ -97,9 +155,9 @@ const IntegrationSettings: React.FC = () => {
   const fetchIntegrations = async () => {
     try {
       const response = await integrationService.getAll();
-      const integrations = response.data || [];
+      const integrations: Integration[] = response.data || [];
 
-      integrations.forEach((integration: any) => {
+      integrations.forEach((integration) => {
         if (integration.key === "unsplash") {
           setUnsplashConfig({
             ...integration.config,
@@ -110,10 +168,13 @@ const IntegrationSettings: React.FC = () => {
             ...integration.config,
             isActive: integration.isActive,
           });
-        } else if (integration.key === "cloudflare-r2") {
-          setR2Config({
+        } else if (integration.key === "pixabay") {
+          setPixabayConfig({
             ...integration.config,
             isActive: integration.isActive,
+            schedule: integration.schedule || "manual",
+            lastSyncAt: integration.lastSyncAt,
+            syncStatus: integration.syncStatus,
           });
         }
       });
@@ -132,6 +193,8 @@ const IntegrationSettings: React.FC = () => {
         return unsplashConfig.isActive;
       case "freepik":
         return freepikConfig.isActive;
+      case "pixabay":
+        return pixabayConfig.isActive;
       case "cloudflare-r2":
         return r2Config.isActive;
       default:
@@ -148,7 +211,7 @@ const IntegrationSettings: React.FC = () => {
     e.preventDefault();
     setLoading(true);
 
-    let payload: any = { key, name };
+    let payload: Partial<Integration> = { key, name };
 
     if (key === "unsplash") {
       payload = {
@@ -167,6 +230,13 @@ const IntegrationSettings: React.FC = () => {
         type: "content",
         config: { apiKey: freepikConfig.apiKey },
         isActive: freepikConfig.isActive,
+      };
+    } else if (key === "pixabay") {
+      payload = {
+        ...payload,
+        type: "content",
+        config: { apiKey: pixabayConfig.apiKey },
+        isActive: pixabayConfig.isActive,
       };
     } else if (key === "cloudflare-r2") {
       payload = {
@@ -198,6 +268,68 @@ const IntegrationSettings: React.FC = () => {
   const toggleActive = (setter: React.Dispatch<React.SetStateAction<any>>) => {
     setter((prev: any) => ({ ...prev, isActive: !prev.isActive }));
   };
+
+  const handleSyncNow = async (key: string) => {
+    try {
+      toast.loading("Triggering sync...");
+      await integrationService.triggerSync(key);
+      toast.dismiss();
+      toast.success("Sync started successfully");
+    } catch (error) {
+      toast.dismiss();
+      console.error(error);
+      toast.error("Failed to trigger sync");
+    }
+  };
+
+  const renderScheduleControl = (
+    config: UnsplashConfig | FreepikConfig | PixabayConfig,
+    setConfig: (
+      value: React.SetStateAction<
+        UnsplashConfig | FreepikConfig | PixabayConfig
+      >,
+    ) => void,
+    key: string,
+  ) => (
+    <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-xl space-y-4 border border-gray-100 dark:border-gray-700">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+          <FaClock className="text-gray-400" /> Sync Schedule
+        </h4>
+        {config.lastSyncAt && (
+          <span className="text-xs text-gray-500">
+            Last synced: {new Date(config.lastSyncAt).toLocaleString()}
+          </span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-4">
+        <select
+          value={config.schedule}
+          onChange={(e) =>
+            setConfig({ ...config, schedule: e.target.value } as any)
+          }
+          className="flex-1 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-indigo-500 dark:text-white"
+        >
+          <option value="manual">Manual (Paused)</option>
+          <option value="*/15 * * * *">Every 15 Minutes</option>
+          <option value="0 * * * *">Hourly</option>
+          <option value="0 0 * * *">Daily</option>
+        </select>
+
+        <button
+          type="button"
+          onClick={() => handleSyncNow(key)}
+          className="px-4 py-2 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 rounded-xl font-medium hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition-colors flex items-center gap-2"
+        >
+          <FaSync
+            className={config.syncStatus === "SYNCING" ? "animate-spin" : ""}
+          />
+          Sync Now
+        </button>
+      </div>
+    </div>
+  );
 
   // Render Forms
   const renderUnsplashForm = () => (
@@ -278,6 +410,11 @@ const IntegrationSettings: React.FC = () => {
           />
         </div>
       </div>
+      {renderScheduleControl(
+        unsplashConfig,
+        setUnsplashConfig as any,
+        "unsplash",
+      )}
     </form>
   );
 
@@ -310,6 +447,40 @@ const IntegrationSettings: React.FC = () => {
           </button>
         </div>
       </div>
+      {renderScheduleControl(freepikConfig, setFreepikConfig as any, "freepik")}
+    </form>
+  );
+
+  const renderPixabayForm = () => (
+    <form
+      onSubmit={(e) => handleSave(e, "Pixabay", "pixabay")}
+      className="space-y-6 animate-fade-in-up"
+    >
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          API Key
+        </label>
+        <div className="relative">
+          <FaKey className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+          <input
+            type={showPasswords["pixabayApi"] ? "text" : "password"}
+            value={pixabayConfig.apiKey}
+            onChange={(e) =>
+              setPixabayConfig({ ...pixabayConfig, apiKey: e.target.value })
+            }
+            placeholder="Enter Pixabay API Key"
+            className="w-full pl-9 pr-10 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 dark:text-white"
+          />
+          <button
+            type="button"
+            onClick={() => togglePasswordVisibility("pixabayApi")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+          >
+            {showPasswords["pixabayApi"] ? <FaEyeSlash /> : <FaEye />}
+          </button>
+        </div>
+      </div>
+      {renderScheduleControl(pixabayConfig, setPixabayConfig as any, "pixabay")}
     </form>
   );
 
@@ -424,6 +595,9 @@ const IntegrationSettings: React.FC = () => {
     } else if (selectedId === "freepik") {
       isActive = freepikConfig.isActive;
       toggleFn = () => toggleActive(setFreepikConfig);
+    } else if (selectedId === "pixabay") {
+      isActive = pixabayConfig.isActive;
+      toggleFn = () => toggleActive(setPixabayConfig);
     } else if (selectedId === "cloudflare-r2") {
       isActive = r2Config.isActive;
       toggleFn = () => toggleActive(setR2Config);
@@ -592,6 +766,7 @@ const IntegrationSettings: React.FC = () => {
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 border border-gray-100 dark:border-gray-700 shadow-sm">
             {selectedId === "unsplash" && renderUnsplashForm()}
             {selectedId === "freepik" && renderFreepikForm()}
+            {selectedId === "pixabay" && renderPixabayForm()}
             {selectedId === "cloudflare-r2" && renderR2Form()}
           </div>
         </div>

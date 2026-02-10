@@ -5,7 +5,7 @@ export interface LegalDocument {
   _id?: string;
   title: string;
   slug: string;
-  type: 'terms' | 'privacy' | 'disclaimer' | 'eula';
+  type: 'terms' | 'privacy' | 'disclaimer' | 'eula' | 'about-app';
   version: string;
   content: string;
   effectiveDate: string;

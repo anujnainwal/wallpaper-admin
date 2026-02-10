@@ -7,6 +7,9 @@ export interface Integration {
   type: string;
   config: any;
   isActive: boolean;
+  schedule?: string;
+  lastSyncAt?: string | null;
+  syncStatus?: string;
 }
 
 export const integrationService = {
@@ -17,6 +20,16 @@ export const integrationService = {
 
   save: async (data: Partial<Integration>) => {
     const response = await api.post("/integrations", data);
+    return response.data;
+  },
+
+  checkConnection: async (key: string) => {
+    const response = await api.post("/integrations/check-connection", { key });
+    return response.data;
+  },
+
+  triggerSync: async (key: string) => {
+    const response = await api.post("/integrations/sync", { key });
     return response.data;
   },
 };
