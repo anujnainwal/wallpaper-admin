@@ -18,7 +18,7 @@ import CategoryList from "../pages/content/CategoryList";
 import AddCategory from "../pages/content/AddCategory";
 import FAQ from "../pages/support/FAQ";
 import HelpSupport from "../pages/support/HelpSupport";
-import TempTablePage from "../pages/TempTablePage";
+
 import ApiTablePage from "../pages/ApiTablePage";
 import WallpaperListPage from "../pages/WallpaperListPage";
 import WallpaperDetailsPage from "../pages/WallpaperDetailsPage";
@@ -36,6 +36,7 @@ import NotFoundPage from "../pages/error/NotFoundPage";
 import ForbiddenPage from "../pages/error/ForbiddenPage";
 import AuditLogList from "../pages/audit-logs/AuditLogList";
 import IntegrationSettings from "../pages/settings/IntegrationSettings";
+import LandingPageSettings from "../pages/LandingPageSettings";
 
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const { isAuthenticated, token } = useAppSelector((state) => state.auth);
@@ -122,7 +123,7 @@ const AppRoutes: React.FC = () => {
         <Route path="about" element={<About />} />
         <Route path="faq" element={<FAQ />} />
         <Route path="help" element={<HelpSupport />} />
-        <Route path="temp-table" element={<TempTablePage />} />
+
         <Route path="api-table" element={<ApiTablePage />} />
         <Route path="system/audit-logs" element={<AuditLogList />} />
 
@@ -144,6 +145,7 @@ const AppRoutes: React.FC = () => {
 
         {/* Settings */}
         <Route path="settings/integrations" element={<IntegrationSettings />} />
+        <Route path="settings/landing-page" element={<LandingPageSettings />} />
 
         {/* Profile */}
         <Route path="profile" element={<ProfilePage />} />

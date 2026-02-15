@@ -861,7 +861,7 @@ export function ReusableTable<TData, TValue>({
 
       {/* Filter Drawer Panel */}
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-80 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-50 w-96 bg-white dark:bg-gray-800 shadow-2xl transform transition-transform duration-300 ease-in-out ${
           showColumnFilters ? "translate-x-0" : "translate-x-full"
         }`}
       >

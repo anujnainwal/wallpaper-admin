@@ -55,13 +55,17 @@ const WallpaperListPage: React.FC = () => {
       (f) => f.id === "category",
     )?.value;
     const statusFilter = columnFilters.find((f) => f.id === "status")?.value;
+    const dateFilter = columnFilters.find((f) => f.id === "createdAt")
+      ?.value as [string, string] | undefined;
 
     return {
       page: pagination.pageIndex + 1,
       limit: pagination.pageSize,
-      search: debouncedSearch, // Use debounced value
+      search: debouncedSearch,
       category: (categoryFilter as string) || "",
       status: (statusFilter as string) || "",
+      startDate: dateFilter?.[0] || "",
+      endDate: dateFilter?.[1] || "",
     };
   }, [pagination, columnFilters, debouncedSearch]);
 
@@ -306,13 +310,26 @@ const WallpaperListPage: React.FC = () => {
         accessorKey: "createdAt",
         header: "Date",
         meta: {
-          filterVariant: "date",
+          filterVariant: "date-range",
         },
-        cell: (info) => (
-          <span className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap font-medium">
-            {new Date(info.getValue() as string).toLocaleDateString()}
-          </span>
-        ),
+        cell: (info) => {
+          const val = info.getValue() as string;
+          if (!val) return <span className="text-xs text-gray-400">-</span>;
+          const date = new Date(val);
+          return (
+            <span className="text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap font-medium">
+              {!isNaN(date.getTime())
+                ? date.toLocaleString(undefined, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Invalid Format"}
+            </span>
+          );
+        },
       },
     ],
     [categories],

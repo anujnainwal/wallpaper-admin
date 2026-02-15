@@ -20,7 +20,6 @@ import {
   FaQuestionCircle,
   FaLifeRing,
   FaBars,
-  FaTable,
   FaCloud,
   FaExclamationTriangle,
   FaCheckCircle,
@@ -29,6 +28,7 @@ import {
   FaUserShield,
   FaMobileAlt,
   FaCommentDots,
+  FaDesktop,
 } from "react-icons/fa";
 import { useAppDispatch } from "../hooks/storeHook";
 import { logout } from "../store/slices/authSlice";
@@ -273,6 +273,11 @@ const DashboardLayout: React.FC = () => {
             },
           ],
         },
+        {
+          path: "/settings/landing-page",
+          label: "Landing Page",
+          icon: <FaDesktop />,
+        },
       ],
     },
     {
@@ -358,7 +363,7 @@ const DashboardLayout: React.FC = () => {
             },
           ],
         },
-        { path: "/temp-table", label: "Temporary", icon: <FaTable /> },
+
         { path: "/api-table", label: "API Table", icon: <FaCloud /> },
         {
           path: "/system/audit-logs",
